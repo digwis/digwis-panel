@@ -57,6 +57,9 @@ PLATFORMS=(
 
 print_info "开始构建多平台版本..."
 
+# 获取脚本目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 for platform in "${PLATFORMS[@]}"; do
     IFS='/' read -r GOOS GOARCH <<< "$platform"
     
@@ -103,7 +106,9 @@ EOF
     # 创建压缩包
     cd "$TEMP_DIR"
     tar -czf "${PACKAGE_NAME}.tar.gz" *
-    mv "${PACKAGE_NAME}.tar.gz" "$(pwd)/../${RELEASE_DIR}/"
+
+    # 移动到发布目录（使用绝对路径）
+    mv "${PACKAGE_NAME}.tar.gz" "${SCRIPT_DIR}/${RELEASE_DIR}/"
     cd - > /dev/null
     
     # 清理临时目录

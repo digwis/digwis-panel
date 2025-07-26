@@ -14,12 +14,10 @@ INSTALL_DIR="/opt/digwis"
 CONFIG_DIR="/etc/digwis"
 TEMP_DIR="/tmp/digwis-install"
 
-# 下载节点配置 (优先使用国内CDN)
+# 下载节点配置
 DOWNLOAD_NODES=(
-    "https://cdn.digwis.com"
-    "https://download.digwis.com"
-    "https://github.com/digwis/digwis-panel/releases/download"
     "https://raw.githubusercontent.com/digwis/digwis-panel/main/releases"
+    "https://github.com/digwis/digwis-panel/releases/download"
 )
 
 # 版本配置
@@ -176,36 +174,21 @@ detect_os() {
     esac
 }
 
-# 选择最快的下载节点
+# 选择下载节点
 select_download_node() {
-    print_step "选择最快的下载节点..."
+    print_step "选择下载节点..."
 
-    local best_node=""
-    local best_time=999999
+    # 优先使用GitHub仓库中的releases目录
+    DOWNLOAD_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/main/releases"
 
-    for node in "${DOWNLOAD_NODES[@]}"; do
-        print_verbose "测试节点: $node"
+    print_verbose "测试主要下载节点..."
+    local response_code=$(curl -o /dev/null -s -w "%{http_code}" --connect-timeout 5 --max-time 10 "${DOWNLOAD_URL}/version.json" 2>/dev/null || echo "000")
 
-        # 测试节点响应时间
-        local response_time=$(curl -o /dev/null -s -w "%{time_total}" --connect-timeout 3 --max-time 5 "${node}/ping" 2>/dev/null || echo "999")
-        local response_code=$(curl -o /dev/null -s -w "%{http_code}" --connect-timeout 3 --max-time 5 "${node}/ping" 2>/dev/null || echo "000")
-
-        print_verbose "节点 $node 响应时间: ${response_time}s, 状态码: $response_code"
-
-        # 如果响应正常且时间更短，则选择此节点
-        if [ "$response_code" = "200" ] && [ "$(echo "$response_time < $best_time" | bc 2>/dev/null || echo "0")" = "1" ]; then
-            best_node="$node"
-            best_time="$response_time"
-        fi
-    done
-
-    # 如果没有找到可用节点，使用GitHub作为备用
-    if [ -z "$best_node" ]; then
-        print_warning "所有CDN节点不可用，使用GitHub作为备用下载源"
-        DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download"
+    if [ "$response_code" = "200" ]; then
+        print_success "使用GitHub仓库下载节点: $DOWNLOAD_URL"
     else
-        DOWNLOAD_URL="$best_node"
-        print_success "选择下载节点: $DOWNLOAD_URL (响应时间: ${best_time}s)"
+        print_warning "GitHub仓库不可用，使用GitHub Releases作为备用"
+        DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download"
     fi
 }
 
@@ -213,13 +196,13 @@ select_download_node() {
 get_latest_version() {
     print_verbose "获取最新版本号..."
 
-    # 尝试从API获取版本号
-    local version_api="${DOWNLOAD_URL}/api/version"
-    VERSION=$(curl -s --connect-timeout 5 --max-time 10 "$version_api" 2>/dev/null | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
+    # 尝试从仓库的version.json获取版本号
+    local version_file="${DOWNLOAD_URL}/version.json"
+    VERSION=$(curl -s --connect-timeout 5 --max-time 10 "$version_file" 2>/dev/null | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
 
-    # 如果API失败，尝试从GitHub API获取
+    # 如果失败，尝试从GitHub API获取
     if [ -z "$VERSION" ]; then
-        print_verbose "API获取失败，尝试GitHub API..."
+        print_verbose "version.json获取失败，尝试GitHub API..."
         VERSION=$(curl -s --connect-timeout 5 --max-time 10 "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep -o '"tag_name":"[^"]*"' | cut -d'"' -f4)
     fi
 
@@ -262,7 +245,7 @@ download_panel() {
 
     # 构建下载文件名
     local package_name="digwis-panel-${VERSION}-linux-${ARCH}.tar.gz"
-    local download_url="${DOWNLOAD_URL}/${VERSION}/${package_name}"
+    local download_url="${DOWNLOAD_URL}/${package_name}"
 
     print_verbose "下载地址: $download_url"
 
