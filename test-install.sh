@@ -1,45 +1,39 @@
 #!/bin/bash
 
-# 测试安装脚本语法和基本功能
+# 测试新的统一安装脚本
+# 检查语法、函数和配置
 
-echo "🧪 测试 DigWis 安装脚本..."
+echo "🧪 测试 DigWis 统一安装脚本..."
 
 # 测试脚本语法
 echo "📝 检查脚本语法..."
 
-if bash -n install-quick.sh; then
-    echo "✅ install-quick.sh 语法正确"
+if bash -n install.sh; then
+    echo "✅ install.sh 语法正确"
 else
-    echo "❌ install-quick.sh 语法错误"
-    exit 1
-fi
-
-if bash -n install-remote.sh; then
-    echo "✅ install-remote.sh 语法正确"
-else
-    echo "❌ install-remote.sh 语法错误"
+    echo "❌ install.sh 语法错误"
     exit 1
 fi
 
 # 检查必要的函数是否存在
 echo "🔍 检查关键函数..."
 
-# 检查 install-quick.sh 中的函数
-QUICK_FUNCTIONS=("check_root" "detect_arch" "install_deps" "install_go" "build_panel" "create_config" "create_service" "start_service" "show_result")
+REQUIRED_FUNCTIONS=(
+    "check_root"
+    "detect_arch"
+    "detect_os"
+    "install_dependencies"
+    "install_go"
+    "build_panel"
+    "install_panel"
+    "create_service"
+    "configure_firewall"
+    "start_service"
+    "show_result"
+)
 
-for func in "${QUICK_FUNCTIONS[@]}"; do
-    if grep -q "^${func}()" install-quick.sh; then
-        echo "✅ 函数 ${func} 存在"
-    else
-        echo "❌ 函数 ${func} 缺失"
-    fi
-done
-
-# 检查 install-remote.sh 中的函数
-REMOTE_FUNCTIONS=("check_system" "install_dependencies" "install_go" "download_and_build_panel" "create_config" "create_service" "start_service" "show_result")
-
-for func in "${REMOTE_FUNCTIONS[@]}"; do
-    if grep -q "^${func}()" install-remote.sh; then
+for func in "${REQUIRED_FUNCTIONS[@]}"; do
+    if grep -q "^${func}()" install.sh; then
         echo "✅ 函数 ${func} 存在"
     else
         echo "❌ 函数 ${func} 缺失"
@@ -49,35 +43,76 @@ done
 # 检查关键变量
 echo "📋 检查关键变量..."
 
-REQUIRED_VARS=("GITHUB_REPO" "GITHUB_URL" "INSTALL_DIR" "CONFIG_DIR")
+REQUIRED_VARS=(
+    "GITHUB_REPO"
+    "GITHUB_URL"
+    "INSTALL_DIR"
+    "CONFIG_DIR"
+    "SOURCE_DIR"
+    "GO_VERSION"
+)
 
 for var in "${REQUIRED_VARS[@]}"; do
-    if grep -q "^${var}=" install-quick.sh; then
+    if grep -q "^${var}=" install.sh; then
         echo "✅ 变量 ${var} 已定义"
     else
         echo "❌ 变量 ${var} 未定义"
     fi
 done
 
-# 检查 GitHub 仓库地址是否正确
+# 检查 GitHub 仓库地址
 echo "🌐 检查 GitHub 仓库..."
 
-REPO_URL=$(grep "GITHUB_REPO=" install-quick.sh | cut -d'"' -f2)
+REPO_URL=$(grep "GITHUB_REPO=" install.sh | cut -d'"' -f2)
 if [ "$REPO_URL" = "digwis/digwis-panel" ]; then
     echo "✅ GitHub 仓库地址正确: $REPO_URL"
 else
     echo "❌ GitHub 仓库地址错误: $REPO_URL"
 fi
 
-# 模拟检查系统架构检测
-echo "🏗️ 测试架构检测..."
+# 检查命令行参数处理
+echo "🎛️ 检查命令行参数..."
 
-# 模拟不同架构
+if grep -q "while \[\[ \$# -gt 0 \]\]" install.sh; then
+    echo "✅ 支持命令行参数"
+else
+    echo "❌ 不支持命令行参数"
+fi
+
+if grep -q "\-\-verbose" install.sh; then
+    echo "✅ 支持详细模式"
+else
+    echo "❌ 不支持详细模式"
+fi
+
+if grep -q "\-\-quiet" install.sh; then
+    echo "✅ 支持静默模式"
+else
+    echo "❌ 不支持静默模式"
+fi
+
+# 检查错误处理
+echo "🛡️ 检查错误处理..."
+
+if grep -q "set -e" install.sh; then
+    echo "✅ 启用了错误退出"
+else
+    echo "❌ 未启用错误退出"
+fi
+
+if grep -q "retry" install.sh; then
+    echo "✅ 包含重试机制"
+else
+    echo "❌ 缺少重试机制"
+fi
+
+# 模拟测试架构检测
+echo "🏗️ 测试架构检测逻辑..."
+
 test_arch() {
     local arch=$1
     local expected=$2
-    
-    # 临时修改 uname 输出进行测试
+
     if [ "$arch" = "x86_64" ] && [ "$expected" = "amd64" ]; then
         echo "✅ 架构映射正确: $arch -> $expected"
     elif [ "$arch" = "aarch64" ] && [ "$expected" = "arm64" ]; then
@@ -93,17 +128,33 @@ test_arch "x86_64" "amd64"
 test_arch "aarch64" "arm64"
 test_arch "armv7l" "arm"
 
+# 检查Go版本
+echo "🐹 检查Go版本配置..."
+
+GO_VER=$(grep "GO_VERSION=" install.sh | cut -d'"' -f2)
+if [ -n "$GO_VER" ]; then
+    echo "✅ Go版本已配置: $GO_VER"
+else
+    echo "❌ Go版本未配置"
+fi
+
 echo ""
 echo "🎉 测试完成！"
 echo ""
 echo "📖 使用说明："
-echo "1. 快速安装（推荐）："
-echo "   curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-quick.sh | bash"
+echo "1. 基本安装："
+echo "   curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash"
 echo ""
-echo "2. 完整安装："
-echo "   curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-remote.sh | bash"
+echo "2. 详细模式："
+echo "   curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash -s -- --verbose"
 echo ""
-echo "3. 本地测试："
-echo "   sudo ./install-quick.sh"
+echo "3. 静默模式："
+echo "   curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash -s -- --quiet"
+echo ""
+echo "4. 本地测试："
+echo "   sudo ./install.sh"
+echo ""
+echo "5. 验证安装："
+echo "   ./verify-install.sh"
 echo ""
 echo "⚠️  注意：安装脚本需要 root 权限运行"

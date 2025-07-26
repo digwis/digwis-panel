@@ -86,7 +86,7 @@ done
 
 # 复制安装脚本
 print_info "复制安装脚本..."
-cp install-remote.sh "${RELEASE_DIR}/install.sh"
+cp install.sh "${RELEASE_DIR}/install.sh"
 
 # 创建版本信息文件
 print_info "创建版本信息..."
@@ -114,13 +114,13 @@ cat > "${RELEASE_DIR}/README.md" << EOF
 
 ### Linux/macOS
 \`\`\`bash
-curl -sSL https://raw.githubusercontent.com/your-username/digwis-panel/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash
 \`\`\`
 
 或者
 
 \`\`\`bash
-wget -qO- https://raw.githubusercontent.com/your-username/digwis-panel/main/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash
 \`\`\`
 
 ### 手动安装
@@ -172,8 +172,8 @@ digwis uninstall  # 卸载面板
 
 ## 技术支持
 
-- GitHub: https://github.com/your-username/digwis-panel
-- Issues: https://github.com/your-username/digwis-panel/issues
+- GitHub: https://github.com/digwis/digwis-panel
+- Issues: https://github.com/digwis/digwis-panel/issues
 EOF
 
 # 显示发布信息
@@ -189,7 +189,7 @@ echo "   支持平台: ${#PLATFORMS[@]} 个"
 echo ""
 echo "🚀 下一步操作:"
 echo "   1. 将 ${RELEASE_DIR}/ 目录下的文件上传到 GitHub Releases"
-echo "   2. 更新 install-remote.sh 中的 GitHub 仓库地址"
+echo "   2. 创建 GitHub Release 标签"
 echo "   3. 测试一键安装脚本"
 echo ""
 print_warning "记得更新 GitHub 仓库地址和版本号！"

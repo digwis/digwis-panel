@@ -23,18 +23,18 @@ echo "=========================="
 
 # 检查二进制文件
 print_info "检查二进制文件..."
-if [ -f "/opt/digwis/digwis-panel" ]; then
-    print_success "二进制文件存在: /opt/digwis/digwis-panel"
-    
+if [ -f "/opt/digwis/digwis" ]; then
+    print_success "二进制文件存在: /opt/digwis/digwis"
+
     # 检查文件权限
-    if [ -x "/opt/digwis/digwis-panel" ]; then
+    if [ -x "/opt/digwis/digwis" ]; then
         print_success "二进制文件可执行"
     else
         print_error "二进制文件不可执行"
     fi
-    
+
     # 获取文件大小
-    SIZE=$(du -h /opt/digwis/digwis-panel | cut -f1)
+    SIZE=$(du -h /opt/digwis/digwis | cut -f1)
     print_info "文件大小: ${SIZE}"
 else
     print_error "二进制文件不存在"
