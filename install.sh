@@ -10,9 +10,9 @@ set -e
 VERBOSE=false
 QUIET=false
 GITHUB_REPO="digwis/digwis-panel"
-INSTALL_DIR="/opt/digwis"
-CONFIG_DIR="/etc/digwis"
-TEMP_DIR="/tmp/digwis-install"
+INSTALL_DIR="/opt/digwis-panel"
+CONFIG_DIR="/etc/digwis-panel"
+TEMP_DIR="/tmp/digwis-panel-install"
 
 # 下载节点配置
 DOWNLOAD_NODES=(
@@ -334,12 +334,15 @@ install_panel() {
     print_verbose "创建安装目录..."
     mkdir -p "$INSTALL_DIR"
     mkdir -p "$CONFIG_DIR"
-    mkdir -p "/var/log/digwis"
+    mkdir -p "/var/log/digwis-panel"
 
     # 复制文件
     print_verbose "复制程序文件..."
-    cp "$TEMP_DIR/digwis" "$INSTALL_DIR/"
-    chmod +x "$INSTALL_DIR/digwis"
+    cp "$TEMP_DIR/digwis" "$INSTALL_DIR/digwis-panel"
+    chmod +x "$INSTALL_DIR/digwis-panel"
+
+    # 删除原始文件名，只保留统一命名的版本
+    rm -f "$INSTALL_DIR/digwis"
 
     # 创建配置文件
     print_verbose "创建配置文件..."
@@ -353,7 +356,7 @@ auth:
 
 log:
   level: "info"
-  file: "/var/log/digwis/digwis.log"
+  file: "/var/log/digwis-panel/digwis-panel.log"
 EOF
 
     print_success "面板安装完成"
@@ -364,7 +367,7 @@ create_service() {
     print_step "配置系统服务..."
 
     print_verbose "创建systemd服务文件..."
-    cat > /etc/systemd/system/digwis.service << EOF
+    cat > /etc/systemd/system/digwis-panel.service << EOF
 [Unit]
 Description=DigWis Server Management Panel
 After=network.target
@@ -373,7 +376,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=$INSTALL_DIR
-ExecStart=$INSTALL_DIR/digwis
+ExecStart=$INSTALL_DIR/digwis-panel -config $CONFIG_DIR/config.yaml -port 8080
 Restart=always
 RestartSec=5
 StandardOutput=journal
@@ -385,7 +388,7 @@ EOF
 
     print_verbose "重新加载systemd配置..."
     systemctl daemon-reload >/dev/null 2>&1
-    systemctl enable digwis >/dev/null 2>&1
+    systemctl enable digwis-panel >/dev/null 2>&1
 
     print_success "系统服务配置完成"
 }
@@ -414,17 +417,17 @@ configure_firewall() {
 start_service() {
     print_step "启动面板服务..."
 
-    print_verbose "启动digwis服务..."
-    systemctl start digwis
+    print_verbose "启动digwis-panel服务..."
+    systemctl start digwis-panel
 
     # 等待服务启动
     sleep 3
 
-    if systemctl is-active --quiet digwis; then
+    if systemctl is-active --quiet digwis-panel; then
         print_success "面板服务启动成功"
     else
         print_error "面板服务启动失败"
-        print_info "查看日志: journalctl -u digwis -f"
+        print_info "查看日志: journalctl -u digwis-panel -f"
         exit 1
     fi
 }
@@ -449,15 +452,15 @@ show_result() {
         echo "   外网: http://$(curl -s ifconfig.me 2>/dev/null || echo "YOUR_SERVER_IP"):8080"
         echo ""
         echo "🔧 管理命令:"
-        echo "   启动服务: systemctl start digwis"
-        echo "   停止服务: systemctl stop digwis"
-        echo "   重启服务: systemctl restart digwis"
-        echo "   查看状态: systemctl status digwis"
-        echo "   查看日志: journalctl -u digwis -f"
+        echo "   启动服务: systemctl start digwis-panel"
+        echo "   停止服务: systemctl stop digwis-panel"
+        echo "   重启服务: systemctl restart digwis-panel"
+        echo "   查看状态: systemctl status digwis-panel"
+        echo "   查看日志: journalctl -u digwis-panel -f"
         echo ""
         echo "📁 安装目录: $INSTALL_DIR"
         echo "📁 配置目录: $CONFIG_DIR"
-        echo "📁 日志目录: /var/log/digwis"
+        echo "📁 日志目录: /var/log/digwis-panel"
         echo ""
         echo -e "${YELLOW}请使用系统用户账号登录面板${NC}"
         echo ""
