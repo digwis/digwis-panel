@@ -22,9 +22,10 @@ REQUIRED_FUNCTIONS=(
     "check_root"
     "detect_arch"
     "detect_os"
+    "select_download_node"
+    "get_latest_version"
     "install_dependencies"
-    "install_go"
-    "build_panel"
+    "download_panel"
     "install_panel"
     "create_service"
     "configure_firewall"
@@ -45,11 +46,11 @@ echo "📋 检查关键变量..."
 
 REQUIRED_VARS=(
     "GITHUB_REPO"
-    "GITHUB_URL"
     "INSTALL_DIR"
     "CONFIG_DIR"
-    "SOURCE_DIR"
-    "GO_VERSION"
+    "TEMP_DIR"
+    "DOWNLOAD_NODES"
+    "VERSION"
 )
 
 for var in "${REQUIRED_VARS[@]}"; do
@@ -128,14 +129,14 @@ test_arch "x86_64" "amd64"
 test_arch "aarch64" "arm64"
 test_arch "armv7l" "arm"
 
-# 检查Go版本
-echo "🐹 检查Go版本配置..."
+# 检查下载节点配置
+echo "🌐 检查下载节点配置..."
 
-GO_VER=$(grep "GO_VERSION=" install.sh | cut -d'"' -f2)
-if [ -n "$GO_VER" ]; then
-    echo "✅ Go版本已配置: $GO_VER"
+DOWNLOAD_NODES_CHECK=$(grep "DOWNLOAD_NODES=" install.sh)
+if [ -n "$DOWNLOAD_NODES_CHECK" ]; then
+    echo "✅ 下载节点已配置"
 else
-    echo "❌ Go版本未配置"
+    echo "❌ 下载节点未配置"
 fi
 
 echo ""
