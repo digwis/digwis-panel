@@ -259,8 +259,8 @@ MIT License
 
 ```bash
 # 一键安装命令
-curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-quick.sh | bash
+curl -sSL https://raw.githubusercontent.com/moviebluebook/digwis-panel/main/install-quick.sh | bash
 
 # 或者使用 wget
-wget -qO- https://raw.githubusercontent.com/digwis/digwis-panel/main/install-quick.sh | bash
+wget -qO- https://raw.githubusercontent.com/moviebluebook/digwis-panel/main/install-quick.sh | bash
 ```
