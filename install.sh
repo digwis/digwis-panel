@@ -10,11 +10,21 @@ set -e
 VERBOSE=false
 QUIET=false
 GITHUB_REPO="digwis/digwis-panel"
-GITHUB_URL="https://github.com/${GITHUB_REPO}.git"
 INSTALL_DIR="/opt/digwis"
 CONFIG_DIR="/etc/digwis"
-SOURCE_DIR="/tmp/digwis-source"
-GO_VERSION="1.21.5"
+TEMP_DIR="/tmp/digwis-install"
+
+# 下载节点配置 (优先使用国内CDN)
+DOWNLOAD_NODES=(
+    "https://cdn.digwis.com"
+    "https://download.digwis.com"
+    "https://github.com/digwis/digwis-panel/releases/download"
+    "https://raw.githubusercontent.com/digwis/digwis-panel/main/releases"
+)
+
+# 版本配置
+VERSION="latest"
+ARCH=""
 
 # 颜色定义
 RED='\033[0;31m'
@@ -116,17 +126,17 @@ check_root() {
 
 # 检测系统架构
 detect_arch() {
-    ARCH=$(uname -m)
-    case $ARCH in
+    local machine_arch=$(uname -m)
+    case $machine_arch in
         x86_64) ARCH="amd64" ;;
         aarch64) ARCH="arm64" ;;
         armv7l) ARCH="arm" ;;
-        *) 
-            print_error "不支持的系统架构: $ARCH"
+        *)
+            print_error "不支持的系统架构: $machine_arch"
             exit 1
             ;;
     esac
-    print_verbose "检测到系统架构: $ARCH"
+    print_verbose "检测到系统架构: $machine_arch -> $ARCH"
 }
 
 # 检测操作系统
@@ -166,6 +176,62 @@ detect_os() {
     esac
 }
 
+# 选择最快的下载节点
+select_download_node() {
+    print_step "选择最快的下载节点..."
+
+    local best_node=""
+    local best_time=999999
+
+    for node in "${DOWNLOAD_NODES[@]}"; do
+        print_verbose "测试节点: $node"
+
+        # 测试节点响应时间
+        local response_time=$(curl -o /dev/null -s -w "%{time_total}" --connect-timeout 3 --max-time 5 "${node}/ping" 2>/dev/null || echo "999")
+        local response_code=$(curl -o /dev/null -s -w "%{http_code}" --connect-timeout 3 --max-time 5 "${node}/ping" 2>/dev/null || echo "000")
+
+        print_verbose "节点 $node 响应时间: ${response_time}s, 状态码: $response_code"
+
+        # 如果响应正常且时间更短，则选择此节点
+        if [ "$response_code" = "200" ] && [ "$(echo "$response_time < $best_time" | bc 2>/dev/null || echo "0")" = "1" ]; then
+            best_node="$node"
+            best_time="$response_time"
+        fi
+    done
+
+    # 如果没有找到可用节点，使用GitHub作为备用
+    if [ -z "$best_node" ]; then
+        print_warning "所有CDN节点不可用，使用GitHub作为备用下载源"
+        DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download"
+    else
+        DOWNLOAD_URL="$best_node"
+        print_success "选择下载节点: $DOWNLOAD_URL (响应时间: ${best_time}s)"
+    fi
+}
+
+# 获取最新版本号
+get_latest_version() {
+    print_verbose "获取最新版本号..."
+
+    # 尝试从API获取版本号
+    local version_api="${DOWNLOAD_URL}/api/version"
+    VERSION=$(curl -s --connect-timeout 5 --max-time 10 "$version_api" 2>/dev/null | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
+
+    # 如果API失败，尝试从GitHub API获取
+    if [ -z "$VERSION" ]; then
+        print_verbose "API获取失败，尝试GitHub API..."
+        VERSION=$(curl -s --connect-timeout 5 --max-time 10 "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep -o '"tag_name":"[^"]*"' | cut -d'"' -f4)
+    fi
+
+    # 如果仍然失败，使用默认版本
+    if [ -z "$VERSION" ]; then
+        print_warning "无法获取最新版本，使用默认版本"
+        VERSION="v1.0.0"
+    fi
+
+    print_verbose "目标版本: $VERSION"
+}
+
 # 安装系统依赖
 install_dependencies() {
     print_step "安装系统依赖..."
@@ -186,126 +252,95 @@ install_dependencies() {
     print_success "系统依赖安装完成"
 }
 
-# 安装Go语言环境
-install_go() {
-    if command -v go >/dev/null 2>&1; then
-        CURRENT_GO_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
-        if [ "$CURRENT_GO_VERSION" = "$GO_VERSION" ]; then
-            print_info "Go $GO_VERSION 已安装，跳过安装"
-            return
-        fi
-    fi
-    
-    print_step "安装Go语言环境..."
-    
-    # 确定Go架构
-    case $ARCH in
-        amd64) GOARCH="amd64" ;;
-        arm64) GOARCH="arm64" ;;
-        arm) GOARCH="armv6l" ;;
-    esac
-    
-    GO_TARBALL="go${GO_VERSION}.linux-${GOARCH}.tar.gz"
-    
-    print_verbose "下载Go ${GO_VERSION} for ${GOARCH}..."
-    cd /tmp
-    
-    # 检查是否已经下载过
-    if [ -f "${GO_TARBALL}" ]; then
-        print_verbose "发现已下载的Go安装包，跳过下载"
-    else
-        print_info "正在下载Go安装包..."
-        
-        # 使用多种下载方式确保成功
-        if command -v wget >/dev/null 2>&1; then
-            if [ "$VERBOSE" = "true" ]; then
-                wget --timeout=30 --tries=3 --progress=bar "https://golang.org/dl/${GO_TARBALL}" -O "${GO_TARBALL}" || {
-                    print_warning "wget下载失败，尝试使用curl..."
-                    curl --connect-timeout 30 --max-time 300 --retry 3 --retry-delay 2 -L "https://golang.org/dl/${GO_TARBALL}" -o "${GO_TARBALL}"
-                }
-            else
-                wget --timeout=30 --tries=3 -q "https://golang.org/dl/${GO_TARBALL}" -O "${GO_TARBALL}" || {
-                    print_warning "wget下载失败，尝试使用curl..."
-                    curl --connect-timeout 30 --max-time 300 --retry 3 --retry-delay 2 -sL "https://golang.org/dl/${GO_TARBALL}" -o "${GO_TARBALL}"
-                }
-            fi
-        else
-            if [ "$VERBOSE" = "true" ]; then
-                curl --connect-timeout 30 --max-time 300 --retry 3 --retry-delay 2 -L "https://golang.org/dl/${GO_TARBALL}" -o "${GO_TARBALL}"
-            else
-                curl --connect-timeout 30 --max-time 300 --retry 3 --retry-delay 2 -sL "https://golang.org/dl/${GO_TARBALL}" -o "${GO_TARBALL}"
-            fi
-        fi
-        
-        # 验证下载是否成功
-        if [ ! -f "${GO_TARBALL}" ] || [ ! -s "${GO_TARBALL}" ]; then
-            print_error "Go安装包下载失败"
-            exit 1
-        fi
-        print_success "Go安装包下载完成"
-    fi
-    
-    print_verbose "安装Go到 /usr/local/go..."
-    rm -rf /usr/local/go
-    tar -C /usr/local -xzf "${GO_TARBALL}" >/dev/null 2>&1
-    rm -f "${GO_TARBALL}"
-    
-    # 设置环境变量
-    if ! grep -q "/usr/local/go/bin" /etc/profile; then
-        echo 'export PATH=$PATH:/usr/local/go/bin' >> /etc/profile
-    fi
-    
-    export PATH=$PATH:/usr/local/go/bin
-    print_success "Go语言环境安装完成"
-}
+# 下载预编译的面板程序
+download_panel() {
+    print_step "下载面板程序..."
 
-# 下载并编译面板
-build_panel() {
-    print_step "下载源码并编译..."
-    
-    # 清理并克隆源码
-    rm -rf $SOURCE_DIR
-    print_verbose "正在从GitHub拉取源码..."
-    
-    # 尝试克隆源码，增加重试机制
-    for i in {1..3}; do
-        if [ "$VERBOSE" = "true" ]; then
-            if git clone --depth=1 "${GITHUB_URL}" "$SOURCE_DIR"; then
-                print_success "源码下载完成"
-                break
-            fi
-        else
-            if git clone --depth=1 "${GITHUB_URL}" "$SOURCE_DIR" >/dev/null 2>&1; then
-                print_success "源码下载完成"
-                break
-            fi
-        fi
-        
-        print_warning "第${i}次尝试失败，重试中..."
-        rm -rf $SOURCE_DIR
-        sleep 2
-        if [ $i -eq 3 ]; then
-            print_error "源码下载失败，请检查网络连接"
-            exit 1
-        fi
-    done
-    
-    cd "$SOURCE_DIR"
-    
-    # 设置Go环境
-    export PATH=$PATH:/usr/local/go/bin
-    export GOPROXY=https://goproxy.cn,direct
-    
-    print_verbose "编译面板程序..."
-    if [ "$VERBOSE" = "true" ]; then
-        go mod tidy
-        go build -ldflags="-s -w" -o digwis main.go
+    # 创建临时目录
+    mkdir -p "$TEMP_DIR"
+    cd "$TEMP_DIR"
+
+    # 构建下载文件名
+    local package_name="digwis-panel-${VERSION}-linux-${ARCH}.tar.gz"
+    local download_url="${DOWNLOAD_URL}/${VERSION}/${package_name}"
+
+    print_verbose "下载地址: $download_url"
+
+    # 检查是否已经下载过
+    if [ -f "$package_name" ]; then
+        print_verbose "发现已下载的安装包，验证完整性..."
+        # 这里可以添加校验逻辑
     else
-        go mod tidy >/dev/null 2>&1
-        go build -ldflags="-s -w" -o digwis main.go >/dev/null 2>&1
+        print_info "正在下载面板安装包..."
+
+        # 尝试多种下载方式
+        local download_success=false
+
+        # 方式1: 使用wget
+        if command -v wget >/dev/null 2>&1 && [ "$download_success" = "false" ]; then
+            if [ "$VERBOSE" = "true" ]; then
+                if wget --timeout=30 --tries=3 --progress=bar "$download_url" -O "$package_name"; then
+                    download_success=true
+                fi
+            else
+                if wget --timeout=30 --tries=3 -q "$download_url" -O "$package_name"; then
+                    download_success=true
+                fi
+            fi
+        fi
+
+        # 方式2: 使用curl
+        if [ "$download_success" = "false" ]; then
+            if [ "$VERBOSE" = "true" ]; then
+                if curl --connect-timeout 30 --max-time 300 --retry 3 --retry-delay 2 -L "$download_url" -o "$package_name"; then
+                    download_success=true
+                fi
+            else
+                if curl --connect-timeout 30 --max-time 300 --retry 3 --retry-delay 2 -sL "$download_url" -o "$package_name"; then
+                    download_success=true
+                fi
+            fi
+        fi
+
+        # 验证下载是否成功
+        if [ "$download_success" = "false" ] || [ ! -f "$package_name" ] || [ ! -s "$package_name" ]; then
+            print_warning "CDN下载失败，尝试从GitHub下载..."
+
+            # 备用方案：从GitHub Releases下载
+            local github_url="https://github.com/${GITHUB_REPO}/releases/download/${VERSION}/${package_name}"
+            print_verbose "GitHub下载地址: $github_url"
+
+            if curl --connect-timeout 30 --max-time 600 --retry 3 --retry-delay 5 -sL "$github_url" -o "$package_name"; then
+                if [ -f "$package_name" ] && [ -s "$package_name" ]; then
+                    print_success "GitHub下载成功"
+                else
+                    print_error "GitHub下载失败"
+                    exit 1
+                fi
+            else
+                print_error "所有下载源均失败，请检查网络连接或稍后重试"
+                exit 1
+            fi
+        fi
+
+        print_success "面板安装包下载完成"
     fi
-    
-    print_success "面板编译完成"
+
+    # 解压安装包
+    print_verbose "解压安装包..."
+    if [ "$VERBOSE" = "true" ]; then
+        tar -xzf "$package_name"
+    else
+        tar -xzf "$package_name" >/dev/null 2>&1
+    fi
+
+    # 验证解压结果
+    if [ ! -f "digwis" ]; then
+        print_error "安装包解压失败或文件损坏"
+        exit 1
+    fi
+
+    print_success "面板程序准备完成"
 }
 
 # 安装面板
@@ -320,7 +355,7 @@ install_panel() {
 
     # 复制文件
     print_verbose "复制程序文件..."
-    cp "$SOURCE_DIR/digwis" "$INSTALL_DIR/"
+    cp "$TEMP_DIR/digwis" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR/digwis"
 
     # 创建配置文件
@@ -414,7 +449,7 @@ start_service() {
 # 清理临时文件
 cleanup() {
     print_verbose "清理临时文件..."
-    rm -rf "$SOURCE_DIR"
+    rm -rf "$TEMP_DIR"
     print_verbose "清理完成"
 }
 
@@ -452,9 +487,10 @@ main() {
     check_root
     detect_arch
     detect_os
+    select_download_node
+    get_latest_version
     install_dependencies
-    install_go
-    build_panel
+    download_panel
     install_panel
     create_service
     configure_firewall

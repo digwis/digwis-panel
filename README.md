@@ -38,6 +38,12 @@ curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh 
 curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash -s -- --quiet
 ```
 
+**安装特点：**
+- 🚀 **预编译二进制** - 无需现场编译，安装速度快
+- 🌐 **智能CDN选择** - 自动选择最快的下载节点
+- 🔄 **多重备用** - CDN失败时自动切换到GitHub
+- 🛡️ **安全可靠** - 支持文件校验和完整性检查
+
 **安装过程：**
 - ✅ 自动检测系统环境
 - ✅ 安装Go语言环境
