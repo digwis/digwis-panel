@@ -19,13 +19,23 @@
 在你的VPS上执行以下命令即可自动安装：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-quick.sh | bash
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash
 ```
 
 或者使用 wget：
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/digwis/digwis-panel/main/install-quick.sh | bash
+wget -qO- https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash
+```
+
+**安装选项：**
+
+```bash
+# 详细模式（显示详细安装信息）
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash -s -- --verbose
+
+# 静默模式（最小输出）
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash -s -- --quiet
 ```
 
 **安装过程：**
@@ -259,8 +269,8 @@ MIT License
 
 ```bash
 # 一键安装命令
-curl -sSL https://raw.githubusercontent.com/moviebluebook/digwis-panel/main/install-quick.sh | bash
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash
 
 # 或者使用 wget
-wget -qO- https://raw.githubusercontent.com/moviebluebook/digwis-panel/main/install-quick.sh | bash
+wget -qO- https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash
 ```

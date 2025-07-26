@@ -15,7 +15,7 @@
 
 **使用方法：**
 ```bash
-curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-quick.sh | bash
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-quick.sh | sudo bash
 ```
 
 ### 2. `install-remote.sh` - 完整安装脚本
@@ -29,7 +29,7 @@ curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-qui
 
 **使用方法：**
 ```bash
-curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-remote.sh | bash
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-remote.sh | sudo bash
 ```
 
 ### 3. `verify-install.sh` - 安装验证脚本
@@ -65,7 +65,7 @@ curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-rem
 
 1. **快速安装（推荐）**
    ```bash
-   curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-quick.sh | bash
+   curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-quick.sh | sudo bash
    ```
 
 2. **验证安装**

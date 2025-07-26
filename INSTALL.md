@@ -9,13 +9,13 @@ DigWis 是一个基于 Go 语言开发的轻量级服务器管理面板，支持
 在你的 VPS 上执行以下命令即可自动安装：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/moviebluebook/digwis-panel/main/install-quick.sh | bash
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-quick.sh | sudo bash
 ```
 
 或者使用 wget：
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/moviebluebook/digwis-panel/main/install-quick.sh | bash
+wget -qO- https://raw.githubusercontent.com/digwis/digwis-panel/main/install-quick.sh | sudo bash
 ```
 
 ### 安装过程
@@ -197,7 +197,7 @@ sudo cat /etc/digwis/config.yaml
 要更新到最新版本，重新运行安装脚本即可：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/moviebluebook/digwis-panel/main/install-quick.sh | bash
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-quick.sh | sudo bash
 ```
 
 ## 🗑️ 卸载面板

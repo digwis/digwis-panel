@@ -13,19 +13,24 @@
 
 现在用户可以在任何支持的 Linux VPS 上使用以下命令一键安装：
 
-### 快速安装（推荐）
+### 一键安装（推荐）
 ```bash
-curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-quick.sh | bash
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash
 ```
 
 ### 使用 wget
 ```bash
-wget -qO- https://raw.githubusercontent.com/digwis/digwis-panel/main/install-quick.sh | bash
+wget -qO- https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash
 ```
 
-### 完整安装（带详细日志）
+### 详细模式安装
 ```bash
-curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-remote.sh | bash
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash -s -- --verbose
+```
+
+### 静默模式安装
+```bash
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash -s -- --quiet
 ```
 
 ## ✅ 安装过程
@@ -120,7 +125,7 @@ curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/verify-inst
 ## 🔗 相关链接
 
 - **GitHub 仓库**: https://github.com/digwis/digwis-panel
-- **快速安装**: `curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-quick.sh | bash`
+- **快速安装**: `curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash`
 - **问题反馈**: https://github.com/digwis/digwis-panel/issues
 
 ## 🎊 总结
