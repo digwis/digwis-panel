@@ -359,6 +359,30 @@ log:
   file: "/var/log/digwis-panel/digwis-panel.log"
 EOF
 
+    # 安装管理工具
+    print_verbose "安装管理工具..."
+    if curl -sSL "https://raw.githubusercontent.com/${GITHUB_REPO}/main/digwis" -o /usr/local/bin/digwis; then
+        chmod +x /usr/local/bin/digwis
+        print_verbose "管理工具安装成功"
+    else
+        print_warning "管理工具下载失败，将使用备用方案"
+        # 创建简化版本的管理工具
+        cat > /usr/local/bin/digwis << 'EOF'
+#!/bin/bash
+echo "DigWis 面板管理工具"
+echo ""
+echo "可用命令:"
+echo "  systemctl start digwis-panel    # 启动服务"
+echo "  systemctl stop digwis-panel     # 停止服务"
+echo "  systemctl restart digwis-panel  # 重启服务"
+echo "  systemctl status digwis-panel   # 查看状态"
+echo "  journalctl -u digwis-panel -f   # 查看日志"
+echo ""
+echo "访问地址: http://localhost:8080"
+EOF
+        chmod +x /usr/local/bin/digwis
+    fi
+
     print_success "面板安装完成"
 }
 
@@ -452,6 +476,7 @@ show_result() {
         echo "   外网: http://$(curl -s ifconfig.me 2>/dev/null || echo "YOUR_SERVER_IP"):8080"
         echo ""
         echo "🔧 管理命令:"
+        echo "   面板管理: digwis                        # 打开管理菜单"
         echo "   启动服务: systemctl start digwis-panel"
         echo "   停止服务: systemctl stop digwis-panel"
         echo "   重启服务: systemctl restart digwis-panel"
