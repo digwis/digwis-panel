@@ -2,7 +2,7 @@
 
 # DigWis 面板一键安装脚本
 # 支持 Ubuntu/Debian/CentOS/RHEL/Fedora 系统
-# 使用方法: curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash
+# 使用方法: curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-digwis-panel.sh | sudo bash
 
 set -e
 
@@ -46,7 +46,7 @@ while [[ $# -gt 0 ]]; do
             echo "DigWis 面板安装脚本"
             echo ""
             echo "使用方法:"
-            echo "  curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash"
+            echo "  curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-digwis-panel.sh | sudo bash"
             echo ""
             echo "选项:"
             echo "  --verbose, -v    显示详细安装信息"
@@ -114,9 +114,9 @@ check_root() {
         print_error "请使用root权限运行此脚本"
         echo ""
         echo "使用方法："
-        echo "  sudo bash install.sh"
+        echo "  sudo bash install-digwis-panel.sh"
         echo "  或者："
-        echo "  curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash"
+        echo "  curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-digwis-panel.sh | sudo bash"
         echo ""
         exit 1
     fi
