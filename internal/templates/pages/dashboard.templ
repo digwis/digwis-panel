@@ -1,0 +1,32 @@
+package pages
+
+import (
+	"server-panel/internal/templates/layouts"
+	"server-panel/internal/i18n"
+)
+import "server-panel/internal/templates/components"
+
+templ Dashboard(title string, username string, currentLang string) {
+	@layouts.Base(title, username, currentLang) {
+		<div class="space-y-6">
+			<!-- 系统状态卡片 -->
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+				<div class="flex items-center justify-between mb-4">
+					<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{ i18n.T(currentLang, "nav.system") }</h3>
+				</div>
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+					@components.CPUCard(currentLang)
+					@components.MemoryCard(currentLang)
+					@components.DiskCard(currentLang)
+					@components.NetworkCard(currentLang)
+				</div>
+			</div>
+
+			<!-- 图表区域 -->
+			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+				@components.CPUChart(currentLang)
+				@components.MemoryInfo(currentLang)
+			</div>
+		</div>
+	}
+}

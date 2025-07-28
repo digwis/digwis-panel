@@ -1,0 +1,131 @@
+package components
+
+import "server-panel/internal/environment"
+
+templ PHPExtensionCard(ext environment.PHPExtension) {
+	<div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+		<div class="flex items-center justify-between">
+			<div class="flex-1">
+				<h4 class="text-sm font-medium text-gray-900">{ ext.DisplayName }</h4>
+				<p class="text-xs text-gray-500 mt-1">{ ext.Description }</p>
+			</div>
+			<div class="ml-4">
+				if ext.Enabled {
+					<label class="relative inline-flex items-center cursor-pointer">
+						<input
+							type="checkbox"
+							checked
+							class="sr-only peer php-extension-toggle"
+							data-extension={ ext.Name }>
+						<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+					</label>
+				} else if ext.Installed {
+					<label class="relative inline-flex items-center cursor-pointer">
+						<input
+							type="checkbox"
+							class="sr-only peer php-extension-toggle"
+							data-extension={ ext.Name }>
+						<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+					</label>
+				} else {
+					<button
+						class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 php-extension-install"
+						data-extension={ ext.Name }>
+						Install
+					</button>
+				}
+			</div>
+		</div>
+		
+		<div class="mt-2 flex items-center space-x-2">
+			if ext.Enabled {
+				<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+					<svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+						<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+					</svg>
+					Enabled
+				</span>
+			} else if ext.Installed {
+				<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+					Disabled
+				</span>
+			} else {
+				<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+					Not Installed
+				</span>
+			}
+		</div>
+	</div>
+
+	<script>
+		// Use event delegation for PHP extension controls
+		document.addEventListener('change', function(e) {
+			if (e.target.classList.contains('php-extension-toggle')) {
+				const extName = e.target.dataset.extension;
+				const enabled = e.target.checked;
+				togglePHPExtension(extName, enabled, e.target);
+			}
+		});
+
+		document.addEventListener('click', function(e) {
+			if (e.target.classList.contains('php-extension-install')) {
+				const extName = e.target.dataset.extension;
+				installPHPExtension(extName);
+			}
+		});
+
+		function togglePHPExtension(extName, enabled, checkbox) {
+			const action = enabled ? 'enable' : 'disable';
+
+			fetch(`/api/environment/php-extension/${action}`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					extension: extName
+				})
+			})
+			.then(response => response.json())
+			.then(data => {
+				if (data.success) {
+					location.reload();
+				} else {
+					alert(`Failed to ${action} extension: ` + data.error);
+					// Revert checkbox state
+					checkbox.checked = !enabled;
+				}
+			})
+			.catch(error => {
+				alert(`Failed to ${action} extension: ` + error.message);
+				// Revert checkbox state
+				checkbox.checked = !enabled;
+			});
+		}
+
+		function installPHPExtension(extName) {
+			if (confirm(`Are you sure you want to install the ${extName} extension?`)) {
+				fetch(`/api/environment/php-extension/install`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						extension: extName
+					})
+				})
+				.then(response => response.json())
+				.then(data => {
+					if (data.success) {
+						location.reload();
+					} else {
+						alert('Installation failed: ' + data.error);
+					}
+				})
+				.catch(error => {
+					alert('Installation failed: ' + error.message);
+				});
+			}
+		}
+	</script>
+}

@@ -1,0 +1,111 @@
+package components
+
+// LanguageSwitcher 语言切换器组件
+templ LanguageSwitcher(currentLang string) {
+	<div class="relative" x-data="{ open: false }">
+		<!-- 语言切换按钮 -->
+		<button 
+			@click="open = !open"
+			@click.away="open = false"
+			class="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+			
+			<!-- 语言图标 -->
+			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
+			</svg>
+			
+			<!-- 当前语言 -->
+			<span>
+				if currentLang == "zh" {
+					中文
+				} else {
+					EN
+				}
+			</span>
+			
+			<!-- 下拉箭头 -->
+			<svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+			</svg>
+		</button>
+		
+		<!-- 下拉菜单 -->
+		<div 
+			x-show="open"
+			x-transition:enter="transition ease-out duration-100"
+			x-transition:enter-start="transform opacity-0 scale-95"
+			x-transition:enter-end="transform opacity-100 scale-100"
+			x-transition:leave="transition ease-in duration-75"
+			x-transition:leave-start="transform opacity-100 scale-100"
+			x-transition:leave-end="transform opacity-0 scale-95"
+			class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+			
+			<div class="py-1">
+				<!-- 中文选项 -->
+				<button 
+					@click="switchLanguage('zh')"
+					class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+					:class="{ 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300': '{ currentLang }' === 'zh' }">
+					
+					<span class="mr-3 text-lg">🇨🇳</span>
+					<div class="flex flex-col items-start">
+						<span class="font-medium">中文</span>
+						<span class="text-xs text-gray-500 dark:text-gray-400">简体中文</span>
+					</div>
+					
+					if currentLang == "zh" {
+						<svg class="ml-auto w-4 h-4 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+							<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+						</svg>
+					}
+				</button>
+				
+				<!-- 英文选项 -->
+				<button 
+					@click="switchLanguage('en')"
+					class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+					:class="{ 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300': '{ currentLang }' === 'en' }">
+					
+					<span class="mr-3 text-lg">🇺🇸</span>
+					<div class="flex flex-col items-start">
+						<span class="font-medium">English</span>
+						<span class="text-xs text-gray-500 dark:text-gray-400">English</span>
+					</div>
+					
+					if currentLang == "en" {
+						<svg class="ml-auto w-4 h-4 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+							<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+						</svg>
+					}
+				</button>
+			</div>
+		</div>
+	</div>
+	
+	<!-- JavaScript 语言切换逻辑 -->
+	<script>
+		function switchLanguage(lang) {
+			// 调用 API 设置语言
+			fetch('/api/set-language', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				body: `lang=${lang}`
+			})
+			.then(response => response.json())
+			.then(data => {
+				if (data.success) {
+					// 重新加载页面以应用新语言
+					window.location.reload();
+				}
+			})
+			.catch(error => {
+				console.error('语言切换失败:', error);
+				// 备用方案：直接设置 Cookie
+				document.cookie = `language=${lang}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
+				window.location.reload();
+			});
+		}
+	</script>
+}

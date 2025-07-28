@@ -1,0 +1,19 @@
+package components
+
+import "server-panel/internal/i18n"
+
+templ CPUChart(currentLang string) {
+	<!-- CPU 图表 -->
+	<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+		<div class="flex items-center justify-between mb-4">
+			<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{ i18n.T(currentLang, "system.cpu.trend") }</h3>
+			<div class="flex items-center space-x-2">
+				<div id="connection-status" class="w-2 h-2 bg-gray-400 rounded-full"></div>
+				<span id="connection-text" class="text-sm text-gray-600 dark:text-gray-400">{ i18n.T(currentLang, "system.connecting") }</span>
+			</div>
+		</div>
+		<div id="cpu-chart" class="h-64">
+			<canvas id="cpu-canvas" width="400" height="200" class="w-full h-full"></canvas>
+		</div>
+	</div>
+}

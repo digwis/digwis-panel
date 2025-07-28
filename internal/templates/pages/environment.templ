@@ -1,0 +1,205 @@
+package pages
+
+import (
+	"server-panel/internal/environment"
+	"server-panel/internal/templates/layouts"
+	"server-panel/internal/templates/components"
+	"server-panel/internal/i18n"
+)
+
+templ Environment(title, username, currentLang string, overview *environment.EnvironmentOverview) {
+	@layouts.Base(title, username, currentLang) {
+		<div class="min-h-screen bg-gray-50 dark:bg-gray-900" x-data="environmentManager()">
+			<!-- Welcome Banner for First Time Setup -->
+			if overview.FirstTimeSetup {
+				<div class="mb-4">
+					@components.NotificationBanner(
+						"welcome",
+						i18n.T(currentLang, "environment.welcome.title"),
+						i18n.T(currentLang, "environment.welcome.message"),
+						[]components.BannerAction{
+							{Text: i18n.T(currentLang, "environment.install.all"), OnClick: "bulkInstall()", Style: "primary"},
+							{Text: i18n.T(currentLang, "environment.skip.now"), OnClick: "", Style: "secondary"},
+						},
+						true,
+					)
+				</div>
+
+				<!-- Recommended Setup List -->
+				if len(overview.RecommendedSetup) > 0 {
+					<div class="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 dark:border-blue-500 p-4 mb-6">
+						<div class="flex">
+							<div class="flex-shrink-0">
+								<svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+									<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+								</svg>
+							</div>
+							<div class="ml-3">
+								<h3 class="text-sm font-medium text-blue-800 dark:text-blue-200">Recommended Environment Stack</h3>
+								<div class="mt-2 text-sm text-blue-700 dark:text-blue-300">
+									<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+										for _, service := range overview.RecommendedSetup {
+											<div class="flex items-center">
+												<svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+													<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+												</svg>
+												<span class="text-sm">{ service }</span>
+											</div>
+										}
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				}
+			}
+
+			<!-- Header -->
+			<div class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<div class="flex justify-between items-center py-6">
+						<div>
+							<h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{ i18n.T(currentLang, "environment.title") }</h1>
+							<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{ i18n.T(currentLang, "environment.subtitle") }</p>
+						</div>
+						<div class="flex space-x-3">
+							<button
+								@click="refreshEnvironment()"
+								class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+								<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+								</svg>
+								{ i18n.T(currentLang, "environment.refresh") }
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Main Content -->
+			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+				<!-- Progress Bar (hidden by default) -->
+				<div x-show="showProgress" class="mb-6">
+					<div class="bg-white rounded-lg shadow p-6">
+						<div class="flex items-center justify-between mb-2">
+							<h3 class="text-lg font-medium text-gray-900" x-text="progressTitle">Installing...</h3>
+							<span class="text-sm text-gray-500" x-text="progressPercent + '%'">0%</span>
+						</div>
+						<div class="w-full bg-gray-200 rounded-full h-2">
+							<div class="bg-blue-600 h-2 rounded-full transition-all duration-300" :style="'width: ' + progressPercent + '%'"></div>
+						</div>
+						<p class="mt-2 text-sm text-gray-600" x-text="progressMessage">Preparing...</p>
+					</div>
+				</div>
+
+				<!-- Environment Cards -->
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+					for _, service := range overview.Services {
+						@components.EnvironmentCard(service, currentLang)
+					}
+				</div>
+
+				<!-- PHP Extensions (if PHP is installed) -->
+				if len(overview.PHPExtensions) > 0 {
+					<div id="php-extensions-section" class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 transition-all duration-300">
+						<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+							<h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">PHP Extensions</h3>
+							<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage PHP extensions and modules</p>
+						</div>
+						<div class="p-6">
+							<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+								for _, ext := range overview.PHPExtensions {
+									@components.PHPExtensionCard(ext)
+								}
+							</div>
+						</div>
+					</div>
+				}
+			</div>
+		</div>
+
+		<!-- Alpine.js Environment Manager -->
+		<script>
+			function environmentManager() {
+				return {
+					showProgress: false,
+					progressTitle: '',
+					progressPercent: 0,
+					progressMessage: '',
+
+					refreshEnvironment() {
+						window.location.reload();
+					},
+
+					bulkInstall() {
+						this.showProgress = true;
+						this.progressTitle = 'Installing Environment Stack';
+						this.progressPercent = 0;
+						this.progressMessage = 'Preparing installation...';
+
+						// Start bulk installation
+						fetch('/api/environment/bulk-install', {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							body: JSON.stringify({
+								services: ['nginx', 'php', 'mariadb', 'redis'],
+								confirm: true
+							})
+						})
+						.then(response => response.json())
+						.then(data => {
+							if (data.success) {
+								this.trackProgress();
+							} else {
+								this.showError('Installation failed: ' + data.error);
+							}
+						})
+						.catch(error => {
+							this.showError('Installation failed: ' + error.message);
+						});
+					},
+
+					trackProgress() {
+						// Poll for progress updates
+						const interval = setInterval(() => {
+							fetch('/api/environment/progress')
+								.then(response => response.json())
+								.then(data => {
+									if (data.success && data.data) {
+										this.progressPercent = data.data.progress;
+										this.progressMessage = data.data.message;
+										
+										if (data.data.status === 'completed') {
+											clearInterval(interval);
+											this.showProgress = false;
+											this.refreshEnvironment();
+										} else if (data.data.status === 'error') {
+											clearInterval(interval);
+											this.showError(data.data.message);
+										}
+									}
+								})
+								.catch(error => {
+									clearInterval(interval);
+									this.showError('Failed to track progress: ' + error.message);
+								});
+						}, 1000);
+					},
+
+					showError(message) {
+						this.showProgress = false;
+						alert('Error: ' + message);
+					}
+				}
+			}
+		</script>
+
+		<!-- 自定义确认弹窗 -->
+		@components.ConfirmModal()
+
+		<!-- 通知系统 -->
+		@components.Notification()
+	}
+}

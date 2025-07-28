@@ -1,0 +1,134 @@
+package components
+
+// NotificationBanner 通知横幅组件
+templ NotificationBanner(bannerType, title, message string, actions []BannerAction, dismissible bool) {
+	<div
+		x-data="{ show: true }"
+		x-show="show"
+		x-transition:enter="transition ease-out duration-300"
+		x-transition:enter-start="opacity-0 transform -translate-y-2"
+		x-transition:enter-end="opacity-100 transform translate-y-0"
+		x-transition:leave="transition ease-in duration-200"
+		x-transition:leave-start="opacity-100 transform translate-y-0"
+		x-transition:leave-end="opacity-0 transform -translate-y-2"
+		class={ getBannerClasses(bannerType) + " py-4" }>
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+			<div class="flex items-center justify-between flex-wrap gap-4">
+				<div class="flex items-center min-w-0 flex-1">
+					<span class="flex p-2 rounded-lg bg-white bg-opacity-20 flex-shrink-0">
+						@getBannerIcon(bannerType)
+					</span>
+					<div class="ml-4 min-w-0 flex-1">
+						<div class="text-white font-semibold text-base">{ title }</div>
+						if message != "" {
+							<div class="text-white text-sm opacity-90 mt-1">{ message }</div>
+						}
+					</div>
+				</div>
+
+				<div class="flex items-center space-x-3">
+					if len(actions) > 0 {
+						<div class="flex space-x-2">
+							for _, action := range actions {
+								if action.OnClick != "" {
+									<button
+										@click={ action.OnClick }
+										class={ getBannerActionClasses(action.Style) }>
+										{ action.Text }
+									</button>
+								} else {
+									<button
+										@click="show = false"
+										class={ getBannerActionClasses(action.Style) }>
+										{ action.Text }
+									</button>
+								}
+							}
+						</div>
+					}
+
+					if dismissible {
+						<button
+							@click="show = false"
+							type="button"
+							class="flex p-2 rounded-md hover:bg-white hover:bg-opacity-20 focus:outline-none focus:ring-2 focus:ring-white transition-colors duration-200">
+							<span class="sr-only">Dismiss</span>
+							<svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							</svg>
+						</button>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+// BannerAction 横幅操作按钮
+type BannerAction struct {
+	Text    string
+	OnClick string
+	Style   string // "primary", "secondary"
+}
+
+// getBannerClasses 获取横幅样式类
+func getBannerClasses(bannerType string) string {
+	switch bannerType {
+	case "info":
+		return "bg-blue-600 dark:bg-blue-700"
+	case "success":
+		return "bg-green-600 dark:bg-green-700"
+	case "warning":
+		return "bg-yellow-600 dark:bg-yellow-700"
+	case "error":
+		return "bg-red-600 dark:bg-red-700"
+	case "welcome":
+		return "bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-700 dark:to-purple-700"
+	default:
+		return "bg-blue-600 dark:bg-blue-700"
+	}
+}
+
+// getBannerActionClasses 获取按钮样式类
+func getBannerActionClasses(style string) string {
+	switch style {
+	case "primary":
+		return "bg-white text-gray-900 hover:bg-gray-100 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors duration-200"
+	case "secondary":
+		return "bg-transparent text-white hover:bg-white hover:bg-opacity-20 dark:text-white dark:hover:bg-white dark:hover:bg-opacity-20 px-4 py-2 border border-white border-opacity-50 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors duration-200"
+	default:
+		return "bg-white text-gray-900 hover:bg-gray-100 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors duration-200"
+	}
+}
+
+
+
+// getBannerIcon 获取横幅图标
+templ getBannerIcon(bannerType string) {
+	switch bannerType {
+	case "info":
+		<svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+			<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+		</svg>
+	case "success":
+		<svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+			<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+		</svg>
+	case "warning":
+		<svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+			<path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+		</svg>
+	case "error":
+		<svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+			<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+		</svg>
+	case "welcome":
+		<svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+		</svg>
+	default:
+		<svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+			<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+		</svg>
+	}
+}

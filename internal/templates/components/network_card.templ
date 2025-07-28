@@ -1,0 +1,25 @@
+package components
+
+import "server-panel/internal/i18n"
+
+templ NetworkCard(currentLang string) {
+	<!-- 网络卡片 -->
+	<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+		<div class="flex items-center justify-between">
+			<div>
+				<p class="text-sm font-medium text-gray-600 dark:text-gray-400">{ i18n.T(currentLang, "system.network.traffic") }</p>
+				<p id="network-usage" class="text-2xl font-bold text-purple-600 dark:text-purple-400">--</p>
+			</div>
+			<div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+				<svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path>
+				</svg>
+			</div>
+		</div>
+		<div class="mt-4">
+			<div id="network-details" class="text-xs text-gray-500">
+				↓ -- ↑ --
+			</div>
+		</div>
+	</div>
+}

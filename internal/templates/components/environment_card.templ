@@ -1,0 +1,425 @@
+package components
+
+import (
+	"server-panel/internal/environment"
+	"server-panel/internal/i18n"
+	"strconv"
+)
+
+templ EnvironmentCard(service environment.Service, currentLang string) {
+	<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow h-full flex flex-col">
+		<div class="flex items-start justify-between mb-4">
+			<div class="flex items-center flex-1">
+				<div class="text-2xl mr-3 flex-shrink-0">{ service.Icon }</div>
+				<div class="min-w-0 flex-1">
+					<h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 truncate">{ service.DisplayName }</h3>
+					<p class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{ service.Description }</p>
+				</div>
+			</div>
+			<div class="flex flex-col items-end ml-4 flex-shrink-0">
+				if service.Status == environment.StatusInstalled {
+					<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+						<svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+							<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+						</svg>
+						{ i18n.T(currentLang, "environment.status.installed") }
+					</span>
+				} else if service.Status == environment.StatusInstalling {
+					<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200">
+						<svg class="animate-spin w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24">
+							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+						</svg>
+						{ i18n.T(currentLang, "environment.status.installing") }
+					</span>
+				} else {
+					<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+						{ i18n.T(currentLang, "environment.status.not_installed") }
+					</span>
+				}
+			</div>
+		</div>
+
+		<div class="flex-1">
+			if service.Status == environment.StatusInstalled {
+				<div class="space-y-2">
+					<div class="flex justify-between text-sm">
+						<span class="text-gray-500 dark:text-gray-400">{ i18n.T(currentLang, "environment.version") }:</span>
+						<span class="text-gray-900 dark:text-gray-100">{ service.Version }</span>
+					</div>
+					if service.Port > 0 {
+						<div class="flex justify-between text-sm">
+							<span class="text-gray-500 dark:text-gray-400">{ i18n.T(currentLang, "environment.port") }:</span>
+							<span class="text-gray-900 dark:text-gray-100">{ strconv.Itoa(service.Port) }</span>
+						</div>
+					}
+					<div class="flex justify-between text-sm">
+						<span class="text-gray-500 dark:text-gray-400">{ i18n.T(currentLang, "environment.status") }:</span>
+						if service.IsRunning {
+							<span class="text-green-600 dark:text-green-400 font-medium">{ i18n.T(currentLang, "environment.status.running") }</span>
+						} else {
+							<span class="text-red-600 dark:text-red-400 font-medium">{ i18n.T(currentLang, "environment.status.stopped") }</span>
+						}
+					</div>
+				</div>
+			}
+		</div>
+
+		<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+			if service.Status == environment.StatusInstalled {
+				<div class="flex space-x-2">
+					if !service.IsRunning {
+						<button
+							class="flex-1 bg-green-600 dark:bg-green-700 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-green-700 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+							data-service={ service.Name }
+							data-action="start">
+							{ i18n.T(currentLang, "environment.action.start") }
+						</button>
+					} else {
+						<button
+							class="flex-1 bg-red-600 dark:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-red-700 dark:hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+							data-service={ service.Name }
+							data-action="stop">
+							{ i18n.T(currentLang, "environment.action.stop") }
+						</button>
+					}
+					<button
+						class="flex-1 bg-blue-600 dark:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+						data-service={ service.Name }
+						data-action="restart">
+						{ i18n.T(currentLang, "environment.action.restart") }
+					</button>
+					if service.Name == "php" {
+						<button
+							class="bg-green-600 dark:bg-green-700 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-green-700 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+							data-service={ service.Name }
+							data-action="extensions">
+							扩展
+						</button>
+					}
+					<button
+						class="bg-gray-600 dark:bg-gray-700 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+						data-service={ service.Name }
+						data-action="uninstall">
+						{ i18n.T(currentLang, "environment.action.uninstall") }
+					</button>
+				</div>
+			} else {
+				<button
+					class="w-full bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+					data-service={ service.Name }
+					data-action="install">
+					{ i18n.T(currentLang, "environment.action.install") }
+				</button>
+			}
+		</div>
+	</div>
+
+	<script>
+		// Use event delegation for service buttons
+		document.addEventListener('click', function(e) {
+			if (e.target.dataset.service && e.target.dataset.action) {
+				const serviceName = e.target.dataset.service;
+				const action = e.target.dataset.action;
+
+				switch(action) {
+					case 'install':
+						installService(serviceName);
+						break;
+					case 'uninstall':
+						uninstallService(serviceName);
+						break;
+					case 'start':
+						startService(serviceName);
+						break;
+					case 'stop':
+						stopService(serviceName);
+						break;
+					case 'restart':
+						restartService(serviceName);
+						break;
+					case 'extensions':
+						showPHPExtensions();
+						break;
+				}
+			}
+		});
+
+		function installService(serviceName) {
+			// 检查是否已经在安装中
+			if (document.querySelector(`#progress-${serviceName}`)) {
+				return; // 已经在安装中，忽略重复点击
+			}
+
+			// 使用自定义确认弹窗
+			showConfirmModal(
+				'确认安装',
+				`您确定要安装 ${serviceName} 吗？`,
+				'安装',
+				function() {
+					// 禁用安装按钮
+					const installBtn = document.querySelector(`[data-service="${serviceName}"][data-action="install"]`);
+					if (installBtn) {
+						installBtn.disabled = true;
+						installBtn.textContent = 'Installing...';
+					}
+
+					// 显示安装进度
+					showInstallProgress(serviceName);
+
+					fetch(`/api/environment/install`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							name: serviceName,
+							version: 'latest'
+						})
+					})
+					.then(response => response.json())
+					.then(data => {
+						if (data.success) {
+							// 开始轮询进度
+							pollInstallProgress(serviceName);
+						} else {
+							hideInstallProgress(serviceName);
+							enableInstallButton(serviceName);
+							showNotification('安装失败: ' + data.error, 'error');
+						}
+					})
+					.catch(error => {
+						hideInstallProgress(serviceName);
+						enableInstallButton(serviceName);
+						showNotification('安装失败: ' + error.message, 'error');
+					});
+				}
+			);
+		}
+
+		function showInstallProgress(serviceName) {
+			// 检查是否已经有进度显示
+			if (document.querySelector(`#progress-${serviceName}`)) {
+				return; // 已经有进度显示，不重复添加
+			}
+
+			// 找到对应的服务卡片
+			const serviceCard = document.querySelector(`[data-service="${serviceName}"][data-action="install"]`).closest('.bg-white, .dark\\:bg-gray-800');
+			if (serviceCard) {
+				// 添加进度显示
+				const progressHtml = `
+					<div class="install-progress install-progress-${serviceName} mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+						<div class="flex items-center justify-between mb-2">
+							<span class="text-sm font-medium text-blue-700 dark:text-blue-300">Installing ${serviceName}...</span>
+							<span class="text-sm text-blue-600 dark:text-blue-400" id="progress-${serviceName}">0%</span>
+						</div>
+						<div class="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
+							<div class="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-300"
+								 id="progress-bar-${serviceName}" style="width: 0%"></div>
+						</div>
+						<div class="text-xs text-blue-600 dark:text-blue-400 mt-1" id="progress-message-${serviceName}">
+							Preparing installation...
+						</div>
+					</div>
+				`;
+				serviceCard.insertAdjacentHTML('beforeend', progressHtml);
+			}
+		}
+
+		function hideInstallProgress(serviceName) {
+			if (serviceName) {
+				// 隐藏特定服务的进度
+				document.querySelectorAll(`.install-progress-${serviceName}`).forEach(el => el.remove());
+			} else {
+				// 隐藏所有进度
+				document.querySelectorAll('.install-progress').forEach(el => el.remove());
+			}
+		}
+
+		function enableInstallButton(serviceName) {
+			const installBtn = document.querySelector(`[data-service="${serviceName}"][data-action="install"]`);
+			if (installBtn) {
+				installBtn.disabled = false;
+				installBtn.textContent = '安装';
+			}
+		}
+
+		function updateProgress(serviceName, progress, message) {
+			const progressPercent = document.getElementById(`progress-${serviceName}`);
+			const progressBar = document.getElementById(`progress-bar-${serviceName}`);
+			const progressMessage = document.getElementById(`progress-message-${serviceName}`);
+
+			if (progressPercent) progressPercent.textContent = progress + '%';
+			if (progressBar) progressBar.style.width = progress + '%';
+			if (progressMessage) progressMessage.textContent = message;
+		}
+
+		function pollInstallProgress(serviceName) {
+			const interval = setInterval(() => {
+				fetch('/api/environment/progress')
+					.then(response => response.json())
+					.then(data => {
+						if (data.success && data.data && data.data.environment === serviceName) {
+							updateProgress(serviceName, data.data.progress, data.data.message);
+
+							if (data.data.status === 'completed') {
+								clearInterval(interval);
+								hideInstallProgress(serviceName);
+								setTimeout(() => {
+									location.reload();
+								}, 1000);
+							} else if (data.data.status === 'error') {
+								clearInterval(interval);
+								hideInstallProgress(serviceName);
+								enableInstallButton(serviceName);
+								showNotification('安装失败: ' + data.data.message, 'error');
+							}
+						} else if (data.success && !data.data) {
+							// 没有进度数据，可能安装已完成
+							clearInterval(interval);
+							hideInstallProgress(serviceName);
+							setTimeout(() => {
+								location.reload();
+							}, 1000);
+						}
+					})
+					.catch(error => {
+						clearInterval(interval);
+						hideInstallProgress(serviceName);
+						enableInstallButton(serviceName);
+						showNotification('进度跟踪失败: ' + error.message, 'error');
+					});
+			}, 1000);
+		}
+
+		function uninstallService(serviceName) {
+			// 使用自定义确认弹窗
+			showConfirmModal(
+				'确认卸载',
+				`您确定要卸载 ${serviceName} 吗？此操作无法撤销。`,
+				'卸载',
+				function() {
+					// 执行卸载操作
+					fetch(`/api/environment/uninstall`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							name: serviceName
+						})
+					})
+					.then(response => response.json())
+					.then(data => {
+						if (data.success) {
+							location.reload();
+						} else {
+							showNotification('卸载失败: ' + data.error, 'error');
+						}
+					})
+					.catch(error => {
+						showNotification('卸载失败: ' + error.message, 'error');
+					});
+				}
+			);
+		}
+
+		function startService(serviceName) {
+			fetch(`/api/environment/start`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					service: serviceName
+				})
+			})
+			.then(response => response.json())
+			.then(data => {
+				if (data.success) {
+					showNotification('服务启动成功', 'success');
+					location.reload();
+				} else {
+					showNotification('服务启动失败: ' + data.error, 'error');
+				}
+			})
+			.catch(error => {
+				showNotification('服务启动失败: ' + error.message, 'error');
+			});
+		}
+
+		function stopService(serviceName) {
+			// 使用自定义确认弹窗
+			showConfirmModal(
+				'确认停止服务',
+				`您确定要停止 ${serviceName} 服务吗？`,
+				'停止',
+				function() {
+					fetch(`/api/environment/stop`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							name: serviceName
+						})
+					})
+					.then(response => response.json())
+					.then(data => {
+						if (data.success) {
+							showNotification('服务停止成功', 'success');
+							location.reload();
+						} else {
+							showNotification('服务停止失败: ' + data.error, 'error');
+						}
+					})
+					.catch(error => {
+						showNotification('服务停止失败: ' + error.message, 'error');
+					});
+				}
+			);
+		}
+
+		function restartService(serviceName) {
+			fetch(`/api/environment/restart`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					name: serviceName
+				})
+			})
+			.then(response => response.json())
+			.then(data => {
+				if (data.success) {
+					showNotification('服务重启成功', 'success');
+					location.reload();
+				} else {
+					showNotification('服务重启失败: ' + data.error, 'error');
+				}
+			})
+			.catch(error => {
+				showNotification('服务重启失败: ' + error.message, 'error');
+			});
+		}
+
+		// 显示 PHP 扩展管理
+		function showPHPExtensions() {
+			// 滚动到 PHP 扩展区域
+			const extensionsSection = document.getElementById('php-extensions-section');
+			if (extensionsSection) {
+				extensionsSection.scrollIntoView({
+					behavior: 'smooth',
+					block: 'start'
+				});
+
+				// 高亮显示扩展区域
+				extensionsSection.classList.add('ring-2', 'ring-blue-500', 'ring-opacity-50');
+				setTimeout(() => {
+					extensionsSection.classList.remove('ring-2', 'ring-blue-500', 'ring-opacity-50');
+				}, 2000);
+			}
+		}
+	</script>
+}

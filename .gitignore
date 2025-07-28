@@ -58,3 +58,22 @@ temp/
 # Backup files
 *.bak
 *.backup
+
+# Curl cookies and temporary files
+cookies.txt
+*.cookie
+
+# Node modules and npm
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# CSS output (generated)
+assets/css/output.css
+
+# Data directory (development)
+data/
+*.db
+*.sqlite
+*.sqlite3

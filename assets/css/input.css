@@ -1,0 +1,316 @@
+@import "tailwindcss";
+
+/* Tailwind CSS v4 配置 - 自定义暗黑模式变体 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+
+  /* 现代化暗黑主题颜色 (参考 YouTube/Notion) */
+  --color-dark-bg: #0f0f0f;
+  --color-dark-surface: #1a1a1a;
+  --color-dark-surface-hover: #2a2a2a;
+  --color-dark-surface-elevated: #212121;
+  --color-dark-border: #3a3a3a;
+  --color-dark-text: #ffffff;
+  --color-dark-text-secondary: #aaaaaa;
+  --color-dark-text-muted: #717171;
+
+  /* 现代化浅色主题颜色 */
+  --color-light-bg: #ffffff;
+  --color-light-surface: #ffffff;
+  --color-light-surface-hover: #f8f9fa;
+  --color-light-surface-elevated: #ffffff;
+  --color-light-border: #e1e5e9;
+  --color-light-text: #1a1a1a;
+  --color-light-text-secondary: #65676b;
+  --color-light-text-muted: #8a8d91;
+
+  /* 现代化强调色 */
+  --color-accent-primary: #1877f2;
+  --color-accent-primary-hover: #166fe5;
+  --color-accent-success: #42b883;
+  --color-accent-warning: #ff9500;
+  --color-accent-danger: #ff3b30;
+
+  --font-family-sans: 'Inter', system-ui, sans-serif;
+
+  --animate-fade-in: fadeIn 0.5s ease-in-out;
+  --animate-slide-up: slideUp 0.3s ease-out;
+  --animate-pulse-slow: pulse 3s infinite;
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes slideUp {
+  0% { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* 自定义样式 */
+html {
+  font-family: var(--font-family-sans);
+}
+
+/* body 样式由 Tailwind 类控制，不在这里硬编码 */
+
+/* 自定义工具类 */
+.text-shadow {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.glass {
+  backdrop-filter: blur(10px);
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+/* 导航链接样式 */
+.nav-link-active {
+  @apply flex items-center px-4 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm transition-all duration-200 hover:bg-blue-700 hover:shadow-md;
+}
+
+.nav-link-inactive {
+  @apply flex items-center px-4 py-3 text-sm font-medium text-gray-300 rounded-lg transition-all duration-200 hover:bg-gray-700 hover:text-white hover:shadow-sm;
+}
+
+/* CSS 图表组件 */
+.chart-container {
+  position: relative;
+  height: 16rem;
+  width: 100%;
+}
+
+/* 线性图表 */
+.line-chart {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  padding: 1rem 0;
+}
+
+.line-chart::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    linear-gradient(to right, rgba(156, 163, 175, 0.2) 1px, transparent 1px),
+    linear-gradient(to top, rgba(156, 163, 175, 0.2) 1px, transparent 1px);
+  background-size: 10% 20%;
+  pointer-events: none;
+}
+
+.line-point {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  background-color: #3b82f6;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 2;
+}
+
+.line-point::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  width: calc(100vw / 20);
+  height: 2px;
+  background: linear-gradient(to right, #3b82f6, #60a5fa);
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.line-point:last-child::before {
+  display: none;
+}
+
+/* 环形进度条 */
+.circular-progress {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.circular-progress svg {
+  transform: rotate(-90deg);
+}
+
+.circular-progress .progress-ring {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+}
+
+.circular-progress .progress-bg {
+  stroke: #e5e7eb;
+}
+
+.circular-progress .progress-bar {
+  stroke: #3b82f6;
+  stroke-dasharray: 283;
+  stroke-dashoffset: 283;
+  transition: stroke-dashoffset 0.5s ease-in-out;
+}
+
+.circular-progress .progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* 条形图 */
+.bar-chart {
+  display: flex;
+  align-items: end;
+  height: 200px;
+  gap: 0.5rem;
+  padding: 1rem 0;
+}
+
+.bar {
+  flex: 1;
+  background: linear-gradient(to top, #3b82f6, #60a5fa);
+  border-radius: 0.25rem 0.25rem 0 0;
+  min-height: 4px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.bar:hover {
+  background: linear-gradient(to top, #2563eb, #3b82f6);
+  transform: translateY(-2px);
+}
+
+.bar::after {
+  content: attr(data-value);
+  position: absolute;
+  top: -1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  color: #6b7280;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.bar:hover::after {
+  opacity: 1;
+}
+
+/* 仪表盘 */
+.gauge {
+  position: relative;
+  width: 200px;
+  height: 100px;
+  overflow: hidden;
+}
+
+.gauge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200px;
+  height: 200px;
+  border: 20px solid #e5e7eb;
+  border-radius: 50%;
+  border-bottom-color: transparent;
+}
+
+.gauge::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200px;
+  height: 200px;
+  border: 20px solid transparent;
+  border-radius: 50%;
+  border-top-color: #3b82f6;
+  border-right-color: #3b82f6;
+  transform: rotate(var(--gauge-rotation, 0deg));
+  transition: transform 0.5s ease-in-out;
+}
+
+.gauge-value {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* 动画 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s infinite;
+}
+
+/* 自定义暗黑主题增强 */
+.dark {
+  color-scheme: dark;
+}
+
+
+
+/* 输入框暗黑主题 */
+.dark input {
+  background-color: var(--color-dark-surface);
+  border-color: var(--color-dark-border);
+  color: var(--color-dark-text);
+}
+
+.dark input:focus {
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 1px var(--color-primary-500);
+}

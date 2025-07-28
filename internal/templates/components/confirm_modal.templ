@@ -1,0 +1,112 @@
+package components
+
+templ ConfirmModal() {
+	<!-- 确认弹窗模态框 -->
+	<div id="confirmModal" class="fixed inset-0 z-50 hidden">
+		<!-- 背景遮罩 -->
+		<div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300" onclick="closeConfirmModal()"></div>
+		
+		<!-- 弹窗内容 -->
+		<div class="fixed inset-0 flex items-center justify-center p-4">
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full transform transition-all duration-300 scale-95 opacity-0" id="confirmModalContent">
+				<!-- 弹窗头部 -->
+				<div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+					<div class="flex items-center">
+						<div class="flex-shrink-0 w-10 h-10 mx-auto bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+							<svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+							</svg>
+						</div>
+						<div class="ml-4">
+							<h3 class="text-lg font-medium text-gray-900 dark:text-white" id="confirmModalTitle">
+								确认操作
+							</h3>
+						</div>
+					</div>
+					<button onclick="closeConfirmModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+						</svg>
+					</button>
+				</div>
+				
+				<!-- 弹窗内容 -->
+				<div class="p-6">
+					<p class="text-sm text-gray-500 dark:text-gray-400" id="confirmModalMessage">
+						您确定要执行此操作吗？
+					</p>
+				</div>
+				
+				<!-- 弹窗按钮 -->
+				<div class="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
+					<button onclick="closeConfirmModal()" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+						取消
+					</button>
+					<button onclick="confirmModalAction()" class="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors" id="confirmModalButton">
+						确认
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<script>
+		let confirmModalCallback = null;
+		
+		// 显示确认弹窗
+		function showConfirmModal(title, message, confirmText = '确认', callback = null) {
+			const modal = document.getElementById('confirmModal');
+			const content = document.getElementById('confirmModalContent');
+			const titleEl = document.getElementById('confirmModalTitle');
+			const messageEl = document.getElementById('confirmModalMessage');
+			const buttonEl = document.getElementById('confirmModalButton');
+			
+			// 设置内容
+			titleEl.textContent = title;
+			messageEl.textContent = message;
+			buttonEl.textContent = confirmText;
+			
+			// 设置回调
+			confirmModalCallback = callback;
+			
+			// 显示弹窗
+			modal.classList.remove('hidden');
+			
+			// 动画效果
+			setTimeout(() => {
+				content.classList.remove('scale-95', 'opacity-0');
+				content.classList.add('scale-100', 'opacity-100');
+			}, 10);
+		}
+		
+		// 关闭确认弹窗
+		function closeConfirmModal() {
+			const modal = document.getElementById('confirmModal');
+			const content = document.getElementById('confirmModalContent');
+			
+			// 动画效果
+			content.classList.remove('scale-100', 'opacity-100');
+			content.classList.add('scale-95', 'opacity-0');
+			
+			setTimeout(() => {
+				modal.classList.add('hidden');
+				confirmModalCallback = null;
+			}, 300);
+		}
+		
+		// 确认操作
+		function confirmModalAction() {
+			if (confirmModalCallback) {
+				confirmModalCallback();
+			}
+			closeConfirmModal();
+		}
+		
+		// ESC 键关闭弹窗
+		document.addEventListener('keydown', function(e) {
+			if (e.key === 'Escape' && !document.getElementById('confirmModal').classList.contains('hidden')) {
+				closeConfirmModal();
+			}
+		});
+	</script>
+}

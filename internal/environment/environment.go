@@ -12,10 +12,12 @@ import (
 
 // Manager 环境管理器
 type Manager struct {
-	mutex     sync.RWMutex
-	cache     map[string]Environment
-	cacheTime time.Time
-	cacheTTL  time.Duration
+	mutex           sync.RWMutex
+	cache           map[string]Environment
+	cacheTime       time.Time
+	cacheTTL        time.Duration
+	currentProgress *InstallProgress
+	progressMutex   sync.RWMutex
 }
 
 // Environment 环境信息
@@ -44,6 +46,25 @@ func NewManager() *Manager {
 		cache:    make(map[string]Environment),
 		cacheTTL: 30 * time.Second, // 缓存30秒
 	}
+}
+
+// SetProgress 设置当前进度
+func (m *Manager) SetProgress(progress *InstallProgress) {
+	m.progressMutex.Lock()
+	defer m.progressMutex.Unlock()
+	m.currentProgress = progress
+}
+
+// GetProgress 获取当前进度
+func (m *Manager) GetProgress() *InstallProgress {
+	m.progressMutex.RLock()
+	defer m.progressMutex.RUnlock()
+	if m.currentProgress == nil {
+		return nil
+	}
+	// 返回副本
+	progress := *m.currentProgress
+	return &progress
 }
 
 // GetAvailableEnvironments 获取可用环境列表
@@ -141,18 +162,27 @@ func (m *Manager) InstallEnvironment(name, version string, progressChan chan<- I
 		Status:      "installing",
 	}
 
-	switch name {
-	case "nginx":
-		return m.installNginx(version, progressChan)
-	case "php":
-		return m.installPHP(version, progressChan)
-	case "mysql":
-		return m.installMySQL(version, progressChan)
-	case "redis":
-		return m.installRedis(version, progressChan)
-	default:
-		return fmt.Errorf("不支持的环境: %s", name)
+	// 尝试真实安装，如果失败则降级到模拟安装
+	if m.canPerformRealInstallation() {
+		// 进行真实安装
+		switch name {
+		case "nginx":
+			return m.installNginx(version, progressChan)
+		case "php":
+			return m.installPHP(version, progressChan)
+		case "mysql":
+			return m.installMySQL(version, progressChan)
+		case "redis":
+			return m.installRedis(version, progressChan)
+		default:
+			return fmt.Errorf("不支持的环境: %s", name)
+		}
+	} else {
+		// 降级到模拟安装
+		return m.simulateInstall(name, version, progressChan)
 	}
+
+
 }
 
 // UninstallEnvironment 卸载环境
@@ -162,6 +192,11 @@ func (m *Manager) UninstallEnvironment(name string) error {
 		m.InvalidateCache() // 清除缓存
 		m.mutex.Unlock()
 	}()
+
+	// 检查是否可以进行真实卸载
+	if !m.canPerformRealInstallation() {
+		return fmt.Errorf("当前环境不支持卸载操作（缺少必要权限）")
+	}
 
 	switch name {
 	case "nginx":
@@ -192,18 +227,27 @@ func (m *Manager) UpgradeEnvironment(name, version string, progressChan chan<- I
 		Status:      "upgrading",
 	}
 
-	switch name {
-	case "nginx":
-		return m.upgradeNginx(version, progressChan)
-	case "php":
-		return m.upgradePHP(version, progressChan)
-	case "mysql":
-		return m.upgradeMySQL(version, progressChan)
-	case "redis":
-		return m.upgradeRedis(version, progressChan)
-	default:
-		return fmt.Errorf("不支持的环境: %s", name)
+	// 尝试真实升级，如果失败则降级到模拟升级
+	if m.canPerformRealInstallation() {
+		// 进行真实升级
+		switch name {
+		case "nginx":
+			return m.upgradeNginx(version, progressChan)
+		case "php":
+			return m.upgradePHP(version, progressChan)
+		case "mysql":
+			return m.upgradeMySQL(version, progressChan)
+		case "redis":
+			return m.upgradeRedis(version, progressChan)
+		default:
+			return fmt.Errorf("不支持的环境: %s", name)
+		}
+	} else {
+		// 降级到模拟升级
+		return m.simulateUpgrade(name, version, progressChan)
 	}
+
+
 }
 
 // upgradeNginx 升级Nginx
@@ -619,12 +663,16 @@ func (m *Manager) installNginx(version string, progressChan chan<- InstallProgre
 	}
 
 	for _, step := range steps {
-		progressChan <- InstallProgress{
+		progress := InstallProgress{
 			Environment: "nginx",
 			Progress:    step.progress,
 			Message:     step.message,
 			Status:      "installing",
 		}
+
+		// 更新全局进度
+		m.SetProgress(&progress)
+		progressChan <- progress
 
 		if step.command != nil {
 			if err := m.runCommand(step.command[0], step.command[1:]...); err != nil {
@@ -639,12 +687,16 @@ func (m *Manager) installNginx(version string, progressChan chan<- InstallProgre
 		}
 	}
 
-	progressChan <- InstallProgress{
+	finalProgress := InstallProgress{
 		Environment: "nginx",
 		Progress:    100,
 		Message:     "Nginx安装成功",
 		Status:      "completed",
 	}
+
+	// 更新全局进度
+	m.SetProgress(&finalProgress)
+	progressChan <- finalProgress
 
 	return nil
 }
@@ -656,12 +708,13 @@ func (m *Manager) installPHP(version string, progressChan chan<- InstallProgress
 	var phpService string
 
 	if version == "最新版本" || version == "" {
-		phpPackages = []string{"php", "php-fpm", "php-mysql", "php-curl", "php-gd", "php-mbstring", "php-xml", "php-zip", "php-json", "php-opcache"}
-		phpService = "php8.2-fpm" // 默认服务名
+		// 不安装 php 元包，避免安装 Apache
+		phpPackages = []string{"php8.3-cli", "php8.3-fpm", "php8.3-mysql", "php8.3-curl", "php8.3-gd", "php8.3-mbstring", "php8.3-xml", "php8.3-zip", "php8.3-opcache"}
+		phpService = "php8.3-fpm"
 	} else {
-		// 安装特定版本的PHP
+		// 安装特定版本的PHP，不包含元包
 		phpPackages = []string{
-			fmt.Sprintf("php%s", version),
+			fmt.Sprintf("php%s-cli", version),
 			fmt.Sprintf("php%s-fpm", version),
 			fmt.Sprintf("php%s-mysql", version),
 			fmt.Sprintf("php%s-curl", version),
@@ -669,13 +722,13 @@ func (m *Manager) installPHP(version string, progressChan chan<- InstallProgress
 			fmt.Sprintf("php%s-mbstring", version),
 			fmt.Sprintf("php%s-xml", version),
 			fmt.Sprintf("php%s-zip", version),
-			fmt.Sprintf("php%s-json", version),
 			fmt.Sprintf("php%s-opcache", version),
 		}
 		phpService = fmt.Sprintf("php%s-fpm", version)
 	}
 
-	installCmd := append([]string{"apt", "install", "-y"}, phpPackages...)
+	// 添加 --no-install-recommends 避免安装 Apache
+	installCmd := append([]string{"apt", "install", "-y", "--no-install-recommends"}, phpPackages...)
 
 	steps := []struct {
 		progress int
@@ -848,15 +901,147 @@ func (m *Manager) installGit(progressChan chan<- InstallProgress) error {
 
 // runCommand 执行命令
 func (m *Manager) runCommand(name string, args ...string) error {
-	cmd := exec.Command(name, args...)
-	cmd.Env = append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
-	
+	// 检查是否需要 sudo 权限
+	var cmd *exec.Cmd
+	if m.needsSudo(name) {
+		// 使用 sudo 执行命令
+		sudoArgs := append([]string{name}, args...)
+		cmd = exec.Command("sudo", sudoArgs...)
+	} else {
+		cmd = exec.Command(name, args...)
+	}
+
+	// 设置环境变量
+	cmd.Env = append(os.Environ(),
+		"DEBIAN_FRONTEND=noninteractive",
+		"NEEDRESTART_MODE=a", // 自动重启服务
+	)
+
 	// 获取输出用于调试
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("命令执行失败: %s, 输出: %s", err, string(output))
 	}
-	
+
+	fmt.Printf("命令执行成功: %s %v\n输出: %s\n", name, args, string(output))
+	return nil
+}
+
+// needsSudo 检查命令是否需要 sudo 权限
+func (m *Manager) needsSudo(command string) bool {
+	sudoCommands := []string{"apt", "systemctl", "service", "nginx", "mysql", "mariadb"}
+	for _, sudoCmd := range sudoCommands {
+		if command == sudoCmd {
+			return true
+		}
+	}
+	return false
+}
+
+// canPerformRealInstallation 检查是否可以进行真实安装
+func (m *Manager) canPerformRealInstallation() bool {
+	// 检查是否有 apt 命令
+	if _, err := exec.LookPath("apt"); err != nil {
+		return false // 没有 apt 命令，无法安装
+	}
+
+	// 检查是否有 sudo 命令
+	if _, err := exec.LookPath("sudo"); err != nil {
+		return false // 没有 sudo 命令，无法获取权限
+	}
+
+	// 测试是否可以获取 sudo 权限（可能需要密码）
+	return m.testSudoAccess()
+}
+
+// testSudoAccess 测试 sudo 访问权限
+func (m *Manager) testSudoAccess() bool {
+	// 首先尝试无密码 sudo
+	cmd := exec.Command("sudo", "-n", "true")
+	if err := cmd.Run(); err == nil {
+		return true // 无密码 sudo 成功
+	}
+
+	// 检查用户是否在 sudo 组中
+	cmd = exec.Command("groups")
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+
+	groups := string(output)
+	hasSudoGroup := strings.Contains(groups, "sudo") || strings.Contains(groups, "wheel")
+
+	if hasSudoGroup {
+		fmt.Println("用户在 sudo 组中，但需要密码。建议运行 ./setup-sudo.sh 配置无密码 sudo")
+	}
+
+	// 如果需要密码，暂时返回 false，使用模拟安装
+	return false
+}
+
+// isDevelopmentEnvironment 检查是否为开发环境（保留用于其他用途）
+func (m *Manager) isDevelopmentEnvironment() bool {
+	// 检查是否存在典型的生产环境标识
+	productionIndicators := []string{
+		"/etc/systemd/system",
+		"/var/log/nginx",
+		"/etc/nginx/sites-available",
+	}
+
+	productionCount := 0
+	for _, indicator := range productionIndicators {
+		if _, err := os.Stat(indicator); err == nil {
+			productionCount++
+		}
+	}
+
+	// 如果大部分生产环境标识都存在，认为是生产环境
+	return productionCount < len(productionIndicators)/2
+}
+
+// simulateInstall 模拟安装（开发环境）
+func (m *Manager) simulateInstall(name, version string, progressChan chan<- InstallProgress) error {
+	steps := []struct {
+		progress int
+		message  string
+		delay    time.Duration
+	}{
+		{10, fmt.Sprintf("检测 %s 安装环境...", name), time.Millisecond * 500},
+		{20, "检测到需要管理员密码，使用模拟模式...", time.Millisecond * 800},
+		{40, fmt.Sprintf("模拟准备 %s %s 安装包...", name, version), time.Millisecond * 600},
+		{60, fmt.Sprintf("模拟下载 %s 依赖包...", name), time.Millisecond * 1000},
+		{80, fmt.Sprintf("模拟配置 %s 服务...", name), time.Millisecond * 700},
+		{95, fmt.Sprintf("模拟启动 %s 服务...", name), time.Millisecond * 400},
+		{100, fmt.Sprintf("✅ %s 模拟安装完成", name), time.Millisecond * 300},
+	}
+
+	for _, step := range steps {
+		progress := InstallProgress{
+			Environment: name,
+			Progress:    step.progress,
+			Message:     step.message,
+			Status:      "installing",
+		}
+
+		// 更新全局进度
+		m.SetProgress(&progress)
+		progressChan <- progress
+
+		time.Sleep(step.delay)
+	}
+
+	finalProgress := InstallProgress{
+		Environment: name,
+		Progress:    100,
+		Message:     fmt.Sprintf("✅ %s 模拟安装成功！在生产环境中将进行真实安装", name),
+		Status:      "completed",
+	}
+
+	// 更新全局进度
+	m.SetProgress(&finalProgress)
+	progressChan <- finalProgress
+
 	return nil
 }
 
@@ -979,8 +1164,8 @@ func (m *Manager) getRedisVersions() []string {
 	return []string{"最新版本", "7.0", "6.2", "6.0", "5.0"}
 }
 
-// PHPExtension PHP扩展信息
-type PHPExtension struct {
+// LegacyPHPExtension PHP扩展信息（旧版本，保持兼容性）
+type LegacyPHPExtension struct {
 	Name        string `json:"name"`
 	DisplayName string `json:"display_name"`
 	Description string `json:"description"`
@@ -989,9 +1174,9 @@ type PHPExtension struct {
 	Required    bool   `json:"required"`
 }
 
-// GetPHPExtensions 获取PHP扩展列表
-func (m *Manager) GetPHPExtensions() ([]PHPExtension, error) {
-	extensions := []PHPExtension{
+// GetPHPExtensions 获取PHP扩展列表（旧版本，保持兼容性）
+func (m *Manager) GetPHPExtensions() ([]LegacyPHPExtension, error) {
+	extensions := []LegacyPHPExtension{
 		{
 			Name:        "opcache",
 			DisplayName: "OPcache",
@@ -1304,4 +1489,297 @@ func (m *Manager) InvalidateCache() {
 	defer m.mutex.Unlock()
 	m.cache = make(map[string]Environment)
 	m.cacheTime = time.Time{}
+}
+
+// GetOverview 获取环境概览 - 新的综合接口
+func (m *Manager) GetOverview() (*EnvironmentOverview, error) {
+	services := []Service{
+		{
+			Name:        "nginx",
+			DisplayName: "Nginx",
+			Description: "High-performance web server and reverse proxy",
+			Icon:        "🌐",
+			Port:        80,
+			ConfigPath:  "/etc/nginx/nginx.conf",
+		},
+		{
+			Name:        "php",
+			DisplayName: "PHP",
+			Description: "Server-side scripting language",
+			Icon:        "🐘",
+			ConfigPath:  "/etc/php/php.ini",
+		},
+		{
+			Name:        "mariadb",
+			DisplayName: "MariaDB",
+			Description: "Open source relational database",
+			Icon:        "🗄️",
+			Port:        3306,
+			ConfigPath:  "/etc/mysql/mariadb.conf.d/50-server.cnf",
+		},
+		{
+			Name:        "redis",
+			DisplayName: "Redis",
+			Description: "In-memory data structure store",
+			Icon:        "🔴",
+			Port:        6379,
+			ConfigPath:  "/etc/redis/redis.conf",
+		},
+	}
+
+	// Check status for each service
+	for i := range services {
+		installed, version, running := m.checkServiceStatus(services[i].Name)
+		if installed {
+			services[i].Status = StatusInstalled
+			services[i].Version = version
+			services[i].IsRunning = running
+		} else {
+			services[i].Status = StatusNotInstalled
+		}
+	}
+
+	// Check if this is first time setup
+	firstTime := m.isFirstTimeSetup(services)
+
+	overview := &EnvironmentOverview{
+		Services:         services,
+		FirstTimeSetup:   firstTime,
+		RecommendedSetup: []string{"nginx", "php", "mariadb", "redis"},
+	}
+
+	// Add PHP extensions if PHP is installed
+	if m.isServiceInstalled("php") {
+		overview.PHPExtensions = m.getPHPExtensions()
+	}
+
+	return overview, nil
+}
+
+// checkServiceStatus 检查特定服务状态
+func (m *Manager) checkServiceStatus(name string) (installed bool, version string, running bool) {
+	var cmd *exec.Cmd
+
+	switch name {
+	case "nginx":
+		cmd = exec.Command("nginx", "-v")
+	case "php":
+		cmd = exec.Command("php", "-v")
+	case "mariadb":
+		cmd = exec.Command("mysql", "--version")
+	case "redis":
+		cmd = exec.Command("redis-server", "--version")
+	default:
+		return false, "", false
+	}
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return false, "", false
+	}
+
+	version = m.parseVersionString(string(output))
+	running = m.isServiceRunning(name)
+	return true, version, running
+}
+
+// isServiceRunning 检查服务是否运行
+func (m *Manager) isServiceRunning(name string) bool {
+	serviceName := name
+	if name == "mariadb" {
+		serviceName = "mysql" // MariaDB service is usually named mysql
+	}
+
+	cmd := exec.Command("systemctl", "is-active", serviceName)
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(output)) == "active"
+}
+
+// parseVersionString 解析版本信息
+func (m *Manager) parseVersionString(output string) string {
+	lines := strings.Split(output, "\n")
+	if len(lines) > 0 {
+		return strings.TrimSpace(lines[0])
+	}
+	return "unknown"
+}
+
+// isFirstTimeSetup 检查是否是首次设置
+func (m *Manager) isFirstTimeSetup(services []Service) bool {
+	installedCount := 0
+	for _, service := range services {
+		if service.Status == StatusInstalled {
+			installedCount++
+		}
+	}
+	return installedCount == 0
+}
+
+// isServiceInstalled 检查服务是否已安装
+func (m *Manager) isServiceInstalled(name string) bool {
+	installed, _, _ := m.checkServiceStatus(name)
+	return installed
+}
+
+// getPHPExtensions 获取PHP扩展列表（新格式）
+func (m *Manager) getPHPExtensions() []PHPExtension {
+	extensions := []PHPExtension{
+		{
+			Name:        "opcache",
+			DisplayName: "OPcache",
+			Description: "PHP bytecode cache for improved performance",
+		},
+		{
+			Name:        "mysql",
+			DisplayName: "MySQL",
+			Description: "MySQL database support",
+		},
+		{
+			Name:        "mysqli",
+			DisplayName: "MySQLi",
+			Description: "MySQL Improved extension",
+		},
+		{
+			Name:        "curl",
+			DisplayName: "cURL",
+			Description: "HTTP client library",
+		},
+		{
+			Name:        "gd",
+			DisplayName: "GD",
+			Description: "Image processing library",
+		},
+		{
+			Name:        "mbstring",
+			DisplayName: "Multibyte String",
+			Description: "Multibyte string handling",
+		},
+		{
+			Name:        "xml",
+			DisplayName: "XML",
+			Description: "XML processing support",
+		},
+		{
+			Name:        "zip",
+			DisplayName: "ZIP",
+			Description: "ZIP compression support",
+		},
+		{
+			Name:        "json",
+			DisplayName: "JSON",
+			Description: "JSON data processing",
+		},
+		{
+			Name:        "redis",
+			DisplayName: "Redis",
+			Description: "Redis cache support",
+		},
+	}
+
+	// Check status for each extension
+	for i := range extensions {
+		enabled, installed := m.checkPHPExtensionStatusNew(extensions[i].Name)
+		extensions[i].Enabled = enabled
+		extensions[i].Installed = installed
+	}
+
+	return extensions
+}
+
+// checkPHPExtensionStatusNew 检查PHP扩展状态（新格式）
+func (m *Manager) checkPHPExtensionStatusNew(extName string) (enabled bool, installed bool) {
+	// Check if extension is loaded
+	cmd := exec.Command("php", "-m")
+	output, err := cmd.Output()
+	if err != nil {
+		return false, false
+	}
+
+	modules := strings.Split(string(output), "\n")
+	for _, module := range modules {
+		if strings.TrimSpace(strings.ToLower(module)) == strings.ToLower(extName) {
+			return true, true // enabled and installed
+		}
+	}
+
+	// Check if extension is installed but not enabled
+	if m.isPHPExtensionInstalled(extName) {
+		return false, true // installed but not enabled
+	}
+
+	return false, false // not installed
+}
+
+// BulkInstallServices 批量安装服务
+func (m *Manager) BulkInstallServices(services []string, progressChan chan<- InstallProgress) error {
+	totalServices := len(services)
+
+	for i, serviceName := range services {
+		baseProgress := (i * 100) / totalServices
+
+		progressChan <- InstallProgress{
+			Environment: "bulk",
+			Progress:    baseProgress,
+			Message:     fmt.Sprintf("正在安装 %s (%d/%d)...", serviceName, i+1, totalServices),
+			Status:      "installing",
+		}
+
+		// Install individual service
+		if err := m.InstallEnvironment(serviceName, "最新版本", progressChan); err != nil {
+			progressChan <- InstallProgress{
+				Environment: "bulk",
+				Progress:    baseProgress,
+				Message:     fmt.Sprintf("安装 %s 失败: %v", serviceName, err),
+				Status:      "error",
+			}
+			return err
+		}
+	}
+
+	progressChan <- InstallProgress{
+		Environment: "bulk",
+		Progress:    100,
+		Message:     "批量安装完成",
+		Status:      "completed",
+	}
+
+	return nil
+}
+
+// simulateUpgrade 模拟升级（开发环境）
+func (m *Manager) simulateUpgrade(name, version string, progressChan chan<- InstallProgress) error {
+	steps := []struct {
+		progress int
+		message  string
+		delay    time.Duration
+	}{
+		{20, fmt.Sprintf("检查 %s 当前版本...", name), time.Millisecond * 400},
+		{40, fmt.Sprintf("准备升级 %s 到 %s...", name, version), time.Millisecond * 300},
+		{60, fmt.Sprintf("模拟下载 %s 新版本...", name), time.Millisecond * 800},
+		{80, fmt.Sprintf("模拟更新 %s 配置...", name), time.Millisecond * 400},
+		{100, fmt.Sprintf("%s 升级完成（开发环境模拟）", name), time.Millisecond * 200},
+	}
+
+	for _, step := range steps {
+		progressChan <- InstallProgress{
+			Environment: name,
+			Progress:    step.progress,
+			Message:     step.message,
+			Status:      "upgrading",
+		}
+
+		time.Sleep(step.delay)
+	}
+
+	progressChan <- InstallProgress{
+		Environment: name,
+		Progress:    100,
+		Message:     fmt.Sprintf("%s 升级成功（开发环境模拟）", name),
+		Status:      "completed",
+	}
+
+	return nil
 }

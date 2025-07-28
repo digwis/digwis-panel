@@ -1,0 +1,20 @@
+{
+  "name": "digwis-panel",
+  "version": "0.1.0",
+  "description": "DigWis 服务器管理面板",
+  "scripts": {
+    "build-css": "tailwindcss -i assets/css/input.css -o assets/css/output.css --content \"internal/templates/**/*.templ\"",
+    "watch-css": "tailwindcss -i assets/css/input.css -o assets/css/output.css --content \"internal/templates/**/*.templ\" --watch",
+    "build-css-prod": "tailwindcss -i assets/css/input.css -o assets/css/output.css --content \"internal/templates/**/*.templ\" --minify",
+    "build-templ": "go run github.com/a-h/templ/cmd/templ@latest generate",
+    "watch-templ": "go run github.com/a-h/templ/cmd/templ@latest generate --watch",
+    "build": "npm run build-templ && npm run build-css",
+    "dev": "npm run build-templ && npm run build-css && go run . -port 9090 -debug"
+  },
+  "dependencies": {
+    "@tailwindcss/cli": "^4.1.11",
+    "@tailwindcss/line-clamp": "^0.4.4",
+    "@tailwindcss/typography": "^0.5.16",
+    "tailwindcss": "^4.1.11"
+  }
+}

@@ -1,0 +1,25 @@
+package components
+
+import "server-panel/internal/i18n"
+
+templ DiskCard(currentLang string) {
+	<!-- 磁盘卡片 -->
+	<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+		<div class="flex items-center justify-between">
+			<div>
+				<p class="text-sm font-medium text-gray-600 dark:text-gray-400">{ i18n.T(currentLang, "system.disk.usage") }</p>
+				<p id="disk-usage" class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">--</p>
+			</div>
+			<div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
+				<svg class="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+				</svg>
+			</div>
+		</div>
+		<div class="mt-4">
+			<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+				<div id="disk-progress" class="bg-yellow-600 dark:bg-yellow-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+			</div>
+		</div>
+	</div>
+}
