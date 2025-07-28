@@ -1,3 +1,6 @@
-de5e41bff16e0c04c7a833336ac5d365318ff2a73c554a2438b67ab56468e7de  digwis-panel-v0.2.0-linux-amd64.tar.gz
-7994c1b1cd2e2ac0aa6b72ba5ad1f5a10c6197684286ce7e626af05de32d2086  digwis-panel-v0.2.0-linux-arm64.tar.gz
-768144ec65929e96e49f32e9fccaa495364242c0ab54e6a47477133ec8dd10ac  digwis-panel-v0.2.0-linux-arm.tar.gz
+768144ec65929e96e49f32e9fccaa495364242c0ab54e6a47477133ec8dd10ac  ./digwis-panel-v0.2.0-linux-arm.tar.gz
+b3abf2c5185c4f7da72414f439d1fedc1cafc99781327875da966b25b2be8dba  ./v0.3.0/digwis-panel-v0.3.0-linux-arm64.tar.gz
+659063bd2d6eeff4794c01bef5e82ce444deec7aa831415bbcaf1f2eba193cac  ./v0.3.0/digwis-panel-v0.3.0-linux-amd64.tar.gz
+410442efd54c708f6402c65c4a79e45aaa0e2b1ff244f6c288602ed135cd83df  ./v0.3.0/digwis-panel-v0.3.0-linux-arm.tar.gz
+7994c1b1cd2e2ac0aa6b72ba5ad1f5a10c6197684286ce7e626af05de32d2086  ./digwis-panel-v0.2.0-linux-arm64.tar.gz
+de5e41bff16e0c04c7a833336ac5d365318ff2a73c554a2438b67ab56468e7de  ./digwis-panel-v0.2.0-linux-amd64.tar.gz

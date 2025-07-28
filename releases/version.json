@@ -1,9 +1,27 @@
 {
-    "version": "v0.2.0",
-    "build_time": "2025-07-28T07:47:26Z",
-    "platforms": [
-        "linux/amd64",
-        "linux/arm64", 
-        "linux/arm"
-    ]
+    "latest": "v0.3.0",
+    "versions": {
+        "v0.3.0": {
+            "build_time": "2025-07-29T03:24:00Z",
+            "platforms": [
+                "linux/amd64",
+                "linux/arm64",
+                "linux/arm"
+            ],
+            "stable": true,
+            "changelog": "新增嵌入式静态文件支持，优化部署流程，添加快速升级功能"
+        },
+        "v0.2.0": {
+            "build_time": "2025-07-28T07:47:26Z",
+            "platforms": [
+                "linux/amd64",
+                "linux/arm64",
+                "linux/arm"
+            ],
+            "stable": true,
+            "changelog": "Initial release with embedded static files"
+        }
+    },
+    "download_base": "https://github.com/digwis/digwis-panel/releases/download",
+    "fallback_base": "https://raw.githubusercontent.com/digwis/digwis-panel/main/releases"
 }
