@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # 配置
-REPO_URL="https://github.com/your-username/digwis-panel.git"
+REPO_URL="https://github.com/digwis/digwis-panel.git"
 INSTALL_DIR="/opt/digwis-panel"
 SERVICE_NAME="digwis-panel"
 SERVICE_PORT="9091"
@@ -74,39 +74,116 @@ install_dependencies() {
     fi
 }
 
-# 克隆项目
-clone_project() {
-    log_info "克隆项目..."
-    
+# 检测系统架构
+detect_arch() {
+    local arch=$(uname -m)
+    case $arch in
+        x86_64)
+            echo "amd64"
+            ;;
+        aarch64|arm64)
+            echo "arm64"
+            ;;
+        armv7l|armv6l)
+            echo "arm"
+            ;;
+        *)
+            log_error "不支持的架构: $arch"
+            exit 1
+            ;;
+    esac
+}
+
+# 获取最新版本
+get_latest_version() {
+    log_info "获取最新版本信息..."
+
+    # 尝试从 GitHub API 获取最新版本
+    if command -v curl &> /dev/null; then
+        LATEST_VERSION=$(curl -s "https://api.github.com/repos/digwis/digwis-panel/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    elif command -v wget &> /dev/null; then
+        LATEST_VERSION=$(wget -qO- "https://api.github.com/repos/digwis/digwis-panel/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    fi
+
+    # 如果获取失败，使用默认版本
+    if [[ -z "$LATEST_VERSION" ]]; then
+        LATEST_VERSION="v1.0.0"
+        log_warning "无法获取最新版本，使用默认版本: $LATEST_VERSION"
+    else
+        log_info "最新版本: $LATEST_VERSION"
+    fi
+
+    echo "$LATEST_VERSION"
+}
+
+# 下载预编译二进制文件
+download_binary() {
+    log_info "下载预编译二进制文件..."
+
+    local version=$(get_latest_version)
+    local arch=$(detect_arch)
+    local download_url="https://github.com/digwis/digwis-panel/releases/download/${version}/digwis-panel-${version}-linux-${arch}.tar.gz"
+
+    log_info "下载地址: $download_url"
+
+    # 创建安装目录
+    if [[ -d "$INSTALL_DIR" ]]; then
+        log_info "备份现有安装..."
+        sudo mv "$INSTALL_DIR" "${INSTALL_DIR}.backup.$(date +%s)"
+    fi
+    sudo mkdir -p "$INSTALL_DIR"
+
+    # 下载文件
+    cd /tmp
+    if command -v curl &> /dev/null; then
+        curl -L -o "digwis-panel.tar.gz" "$download_url"
+    elif command -v wget &> /dev/null; then
+        wget -O "digwis-panel.tar.gz" "$download_url"
+    else
+        log_error "需要 curl 或 wget 来下载文件"
+        exit 1
+    fi
+
+    # 解压文件
+    tar -xzf "digwis-panel.tar.gz"
+
+    # 移动到安装目录
+    sudo mv digwis "$INSTALL_DIR/digwis-panel"
+    sudo chmod +x "$INSTALL_DIR/digwis-panel"
+    sudo chown root:root "$INSTALL_DIR/digwis-panel"
+
+    # 清理临时文件
+    rm -f "digwis-panel.tar.gz"
+
+    log_success "二进制文件下载完成"
+}
+
+# 备用方案：克隆并构建
+clone_and_build() {
+    log_warning "使用备用方案：克隆源码并构建"
+
     # 如果目录已存在，先备份
     if [[ -d "$INSTALL_DIR" ]]; then
         log_info "备份现有安装..."
         sudo mv "$INSTALL_DIR" "${INSTALL_DIR}.backup.$(date +%s)"
     fi
-    
+
     # 克隆项目
     sudo git clone "$REPO_URL" "$INSTALL_DIR"
     sudo chown -R $USER:$USER "$INSTALL_DIR"
-    
-    log_success "项目克隆完成"
-}
 
-# 构建项目
-build_project() {
-    log_info "构建项目..."
-    
     cd "$INSTALL_DIR"
-    
+
     # 下载依赖
     go mod download
-    
+
     # 构建项目
     go build -o digwis-panel .
-    
+
     # 设置执行权限
     chmod +x digwis-panel
-    
-    log_success "项目构建完成"
+
+    log_success "源码构建完成"
 }
 
 # 创建系统服务
@@ -181,8 +258,13 @@ main() {
     
     check_requirements
     install_dependencies
-    clone_project
-    build_project
+
+    # 尝试下载预编译版本，失败则构建
+    if ! download_binary; then
+        log_warning "预编译版本下载失败，尝试源码构建..."
+        clone_and_build
+    fi
+
     create_service
     configure_firewall
     start_service
