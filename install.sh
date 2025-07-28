@@ -2,7 +2,7 @@
 
 # DigWis 面板一键安装脚本
 # 支持 Ubuntu/Debian/CentOS/RHEL/Fedora 系统
-# 使用方法: curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-digwis-panel.sh | sudo bash
+# 使用方法: curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash
 
 set -e
 
@@ -46,7 +46,7 @@ while [[ $# -gt 0 ]]; do
             echo "DigWis 面板安装脚本"
             echo ""
             echo "使用方法:"
-            echo "  curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-digwis-panel.sh | sudo bash"
+            echo "  curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash"
             echo ""
             echo "选项:"
             echo "  --verbose, -v    显示详细安装信息"
@@ -114,9 +114,9 @@ check_root() {
         print_error "请使用root权限运行此脚本"
         echo ""
         echo "使用方法："
-        echo "  sudo bash install-digwis-panel.sh"
+        echo "  sudo bash install.sh"
         echo "  或者："
-        echo "  curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install-digwis-panel.sh | sudo bash"
+        echo "  curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash"
         echo ""
         exit 1
     fi
@@ -441,10 +441,14 @@ download_panel() {
     fi
 
     # 验证解压结果
-    if [ ! -f "digwis" ]; then
+    local binary_file=$(find . -name "digwis-panel-*" -type f ! -name "*.tar.gz" | head -1)
+    if [ -z "$binary_file" ]; then
         print_error "安装包解压失败或文件损坏"
         exit 1
     fi
+
+    # 重命名为统一的文件名
+    mv "$binary_file" "digwis-panel"
 
     print_success "面板程序准备完成"
 }
@@ -462,11 +466,8 @@ install_panel() {
 
     # 复制文件
     print_verbose "复制程序文件..."
-    cp "$TEMP_DIR/digwis" "$INSTALL_DIR/digwis-panel"
+    cp "$TEMP_DIR/digwis-panel" "$INSTALL_DIR/digwis-panel"
     chmod +x "$INSTALL_DIR/digwis-panel"
-
-    # 删除原始文件名，只保留统一命名的版本
-    rm -f "$INSTALL_DIR/digwis"
 
     # 创建配置文件
     print_verbose "创建配置文件..."
@@ -483,14 +484,8 @@ log:
   file: "/var/log/digwis-panel/digwis-panel.log"
 EOF
 
-    # 安装管理工具
-    print_verbose "安装管理工具..."
-    if curl -sSL "https://raw.githubusercontent.com/${GITHUB_REPO}/main/scripts/management/digwis" -o /usr/local/bin/digwis; then
-        chmod +x /usr/local/bin/digwis
-        print_verbose "管理工具安装成功"
-    else
-        print_warning "管理工具下载失败，将使用备用方案"
-        # 创建简化版本的管理工具
+    # 创建管理工具
+    print_verbose "创建管理工具..."
         cat > /usr/local/bin/digwis << 'EOF'
 #!/bin/bash
 echo "DigWis 面板管理工具"
@@ -602,7 +597,6 @@ show_result() {
         echo "   外网: http://$(curl -s ifconfig.me 2>/dev/null || echo "YOUR_SERVER_IP"):8080"
         echo ""
         echo "🔧 管理命令:"
-        echo "   面板管理: digwis                        # 打开管理菜单"
         echo "   启动服务: systemctl start digwis-panel"
         echo "   停止服务: systemctl stop digwis-panel"
         echo "   重启服务: systemctl restart digwis-panel"

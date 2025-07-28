@@ -247,10 +247,14 @@ download_new_version() {
     tar -xzf "$package_name" >/dev/null 2>&1
 
     # 验证解压结果
-    if [ ! -f "digwis" ]; then
+    local binary_file=$(find . -name "digwis-panel-*" -type f ! -name "*.tar.gz" | head -1)
+    if [ -z "$binary_file" ]; then
         print_error "安装包解压失败或文件损坏"
         exit 1
     fi
+
+    # 重命名为统一的文件名
+    mv "$binary_file" "digwis-panel"
 
     print_success "新版本准备完成"
 }
@@ -261,7 +265,7 @@ install_new_version() {
 
     # 复制新版本
     print_verbose "复制新版本文件..."
-    cp "$TEMP_DIR/digwis" "$INSTALL_DIR/digwis-panel"
+    cp "$TEMP_DIR/digwis-panel" "$INSTALL_DIR/digwis-panel"
     chmod +x "$INSTALL_DIR/digwis-panel"
 
     print_success "新版本安装完成"
