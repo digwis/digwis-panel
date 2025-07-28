@@ -209,7 +209,7 @@ get_latest_version() {
     # 如果仍然失败，使用默认版本
     if [ -z "$VERSION" ]; then
         print_warning "无法获取最新版本，使用默认版本"
-        VERSION="v1.0.0"
+        VERSION="v0.2.0"
     fi
 
     print_verbose "目标版本: $VERSION"
