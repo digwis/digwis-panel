@@ -164,7 +164,7 @@ check_existing_installation() {
 
         if [ "$QUIET" != "true" ]; then
             echo -n "是否要清理旧版本并重新安装？[y/N]: "
-            read -r response
+            read -r response < /dev/tty
             case "$response" in
                 [yY][eE][sS]|[yY])
                     cleanup_old_installation

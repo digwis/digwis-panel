@@ -95,7 +95,7 @@ confirm_uninstall() {
         return
     fi
 
-    read -p "确认要继续卸载吗？(y/N): " -n 1 -r
+    read -p "确认要继续卸载吗？(y/N): " -n 1 -r < /dev/tty
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         print_info "卸载已取消"
