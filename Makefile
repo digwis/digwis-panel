@@ -118,15 +118,15 @@ install-script:
 # 推送代码到远程仓库 (使用 releases 版本)
 push: build-release
 	@echo "📤 推送代码到远程仓库..."
-	@chmod +x scripts/git-push.sh
-	@./scripts/git-push.sh
+	@chmod +x scripts/simple-push.sh
+	@./scripts/simple-push.sh
 
 # 快速推送（带自定义提交信息）
 push-msg: build-release
 	@echo "📤 推送代码到远程仓库..."
-	@chmod +x scripts/git-push.sh
+	@chmod +x scripts/simple-push.sh
 	@read -p "请输入提交信息: " msg; \
-	./scripts/git-push.sh "$$msg"
+	./scripts/simple-push.sh "$$msg"
 
 # 配置 Git 凭据
 git-config:
