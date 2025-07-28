@@ -486,7 +486,7 @@ EOF
 
     # 创建管理工具
     print_verbose "创建管理工具..."
-        cat > /usr/local/bin/digwis << 'EOF'
+    cat > /usr/local/bin/digwis << 'EOF'
 #!/bin/bash
 echo "DigWis 面板管理工具"
 echo ""
@@ -499,8 +499,7 @@ echo "  journalctl -u digwis-panel -f   # 查看日志"
 echo ""
 echo "访问地址: http://localhost:8080"
 EOF
-        chmod +x /usr/local/bin/digwis
-    fi
+    chmod +x /usr/local/bin/digwis
 
     print_success "面板安装完成"
 }
