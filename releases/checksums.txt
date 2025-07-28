@@ -1,0 +1,3 @@
+6c1e1d86bea6060d4485da77a4fc0b092e5c3375ac934e0aa558a670ae79e074  digwis-panel-v1.0.0-dev.20250728.b9ce9a0-linux-amd64.tar.gz
+75739f5f829f9117d975d620bb2498c89a257c17d501f1846136e2ca0a114b7d  digwis-panel-v1.0.0-dev.20250728.b9ce9a0-linux-arm64.tar.gz
+4744079f9fc9c6d7064bbccf965fc462bb8c6b07d369cb43cdf124c58982b36a  digwis-panel-v1.0.0-dev.20250728.b9ce9a0-linux-arm.tar.gz

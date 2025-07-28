@@ -6,7 +6,18 @@
 set -e
 
 # 版本信息
-VERSION=${1:-"v1.0.0"}
+# 优先使用 Git 标签，如果没有则使用参数，最后使用默认值
+if git describe --tags --exact-match HEAD 2>/dev/null; then
+    VERSION=$(git describe --tags --exact-match HEAD)
+elif [[ -n "$1" ]]; then
+    VERSION="$1"
+else
+    # 使用 Git 提交信息生成版本
+    COMMIT_HASH=$(git rev-parse --short HEAD)
+    COMMIT_DATE=$(git log -1 --format=%cd --date=format:%Y%m%d)
+    VERSION="v1.0.0-dev.${COMMIT_DATE}.${COMMIT_HASH}"
+fi
+
 APP_NAME="digwis-panel"
 
 # 颜色定义
@@ -43,10 +54,17 @@ fi
 
 print_info "Go版本: $(go version)"
 
+# 获取项目根目录（脚本在 scripts/build/ 中）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+print_info "脚本目录: $SCRIPT_DIR"
+print_info "项目根目录: $PROJECT_ROOT"
+
 # 创建发布目录
-RELEASE_DIR="releases"
-rm -rf $RELEASE_DIR
-mkdir -p $RELEASE_DIR
+RELEASE_DIR="${PROJECT_ROOT}/releases"
+rm -rf "$RELEASE_DIR"
+mkdir -p "$RELEASE_DIR"
 
 # 支持的平台
 PLATFORMS=(
@@ -56,9 +74,6 @@ PLATFORMS=(
 )
 
 print_info "开始构建多平台版本..."
-
-# 获取脚本目录
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 for platform in "${PLATFORMS[@]}"; do
     IFS='/' read -r GOOS GOARCH <<< "$platform"
@@ -74,10 +89,11 @@ for platform in "${PLATFORMS[@]}"; do
     rm -rf "$TEMP_DIR"
     mkdir -p "$TEMP_DIR"
     
-    # 构建二进制文件
+    # 构建二进制文件（在项目根目录执行）
+    cd "$PROJECT_ROOT"
     env GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build \
         -a -ldflags '-extldflags "-static" -s -w' \
-        -o "${TEMP_DIR}/${BINARY_NAME}" main.go
+        -o "${TEMP_DIR}/${BINARY_NAME}" .
     
     if [ ! -f "${TEMP_DIR}/${BINARY_NAME}" ]; then
         print_error "构建 ${GOOS}/${GOARCH} 失败"
@@ -85,8 +101,8 @@ for platform in "${PLATFORMS[@]}"; do
     fi
     
     # 复制其他必要文件
-    cp README.md "${TEMP_DIR}/" 2>/dev/null || true
-    cp LICENSE "${TEMP_DIR}/" 2>/dev/null || true
+    cp "${PROJECT_ROOT}/README.md" "${TEMP_DIR}/" 2>/dev/null || true
+    cp "${PROJECT_ROOT}/LICENSE" "${TEMP_DIR}/" 2>/dev/null || true
     
     # 创建安装说明
     cat > "${TEMP_DIR}/INSTALL.txt" << EOF
@@ -107,8 +123,8 @@ EOF
     cd "$TEMP_DIR"
     tar -czf "${PACKAGE_NAME}.tar.gz" *
 
-    # 移动到发布目录（使用绝对路径）
-    mv "${PACKAGE_NAME}.tar.gz" "${SCRIPT_DIR}/${RELEASE_DIR}/"
+    # 移动到发布目录
+    mv "${PACKAGE_NAME}.tar.gz" "${RELEASE_DIR}/"
     cd - > /dev/null
     
     # 清理临时目录

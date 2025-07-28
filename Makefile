@@ -142,6 +142,29 @@ git-init:
 	@./scripts/git-push.sh --config-only
 	@echo "✅ Git 仓库初始化完成"
 
+# 版本管理
+version:
+	@echo "🏷️  版本管理..."
+	@chmod +x scripts/version.sh
+	@./scripts/version.sh
+
+# 创建版本标签
+tag:
+	@echo "🏷️  创建版本标签..."
+	@chmod +x scripts/version.sh
+	@read -p "请输入版本号 (如 v1.0.1): " version; \
+	./scripts/version.sh tag "$$version"
+
+# 发布版本 (标签 + 构建 + 推送)
+release-version: build-release
+	@echo "🚀 发布新版本..."
+	@chmod +x scripts/version.sh
+	@read -p "请输入版本号 (如 v1.0.1): " version; \
+	./scripts/version.sh tag "$$version" && \
+	./scripts/version.sh push && \
+	make release && \
+	echo "✅ 版本 $$version 发布完成"
+
 # 检查 Git 状态
 git-status:
 	@echo "📋 Git 状态:"
@@ -182,6 +205,11 @@ help:
 	@echo "🔧 Git 命令:"
 	@echo "   make git-config     - 配置 Git 凭据"
 	@echo "   make git-init       - 初始化 Git 仓库"
+	@echo ""
+	@echo "🏷️  版本管理:"
+	@echo "   make version        - 版本管理工具"
+	@echo "   make tag            - 创建版本标签"
+	@echo "   make release-version - 发布新版本 (标签 + 构建 + 推送)"
 	@echo ""
 	@echo "🧹 清理命令:"
 	@echo "   make clean          - 清理构建文件 (保留 releases/)"

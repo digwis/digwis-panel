@@ -77,3 +77,26 @@ data/
 *.db
 *.sqlite
 *.sqlite3
+
+# GitHub Token 文件（安全）
+.github-token
+.git-token
+*.token
+
+# 其他敏感文件
+.env.local
+.env.production
+config.local.*
+
+# 旧的发布文件
+releases-old/
+
+# GitHub Token 文件（安全）
+.github-token
+.git-token
+*.token
+
+# 其他敏感文件
+.env.local
+.env.production
+config.local.*
