@@ -317,7 +317,7 @@ get_latest_version() {
 
     # 尝试从仓库的version.json获取版本号
     local version_file="${DOWNLOAD_URL}/version.json"
-    VERSION=$(curl -s --connect-timeout 5 --max-time 10 "$version_file" 2>/dev/null | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
+    VERSION=$(curl -s --connect-timeout 5 --max-time 10 "$version_file" 2>/dev/null | grep -o '"latest":"[^"]*"' | cut -d'"' -f4)
 
     # 如果失败，尝试从GitHub API获取
     if [ -z "$VERSION" ]; then
@@ -328,7 +328,7 @@ get_latest_version() {
     # 如果仍然失败，使用默认版本
     if [ -z "$VERSION" ]; then
         print_warning "无法获取最新版本，使用默认版本"
-        VERSION="v0.2.0"
+        VERSION="v0.3.0"
     fi
 
     print_verbose "目标版本: $VERSION"
@@ -364,7 +364,15 @@ download_panel() {
 
     # 构建下载文件名
     local package_name="digwis-panel-${VERSION}-linux-${ARCH}.tar.gz"
-    local download_url="${DOWNLOAD_URL}/${package_name}"
+
+    # 根据下载节点类型构建下载URL
+    if [[ "$DOWNLOAD_URL" == *"raw.githubusercontent.com"* ]]; then
+        # GitHub仓库下载节点，文件在版本子目录中
+        local download_url="${DOWNLOAD_URL}/${VERSION}/${package_name}"
+    else
+        # GitHub Releases下载节点
+        local download_url="${DOWNLOAD_URL}/${VERSION}/${package_name}"
+    fi
 
     print_verbose "下载地址: $download_url"
 
