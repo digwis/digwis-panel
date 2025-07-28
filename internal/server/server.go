@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -34,7 +36,7 @@ type Config struct {
 	ReadTimeout  time.Duration `json:"read_timeout"`
 	WriteTimeout time.Duration `json:"write_timeout"`
 	IdleTimeout  time.Duration `json:"idle_timeout"`
-	StaticDir    string        `json:"static_dir"`
+	StaticFiles  embed.FS      `json:"-"` // 嵌入的静态文件
 }
 
 // DefaultConfig 默认配置
@@ -46,7 +48,6 @@ func DefaultConfig() *Config {
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
-		StaticDir:    "./assets",
 	}
 }
 
@@ -73,7 +74,7 @@ func New(config *Config) *Server {
 	h := handlers.NewHandlers(systemMonitor, envManager, projectManager)
 
 	// 注册路由
-	registerRoutes(r, h)
+	registerRoutes(r, h, config)
 
 	// 创建 HTTP 服务器
 	httpServer := &http.Server{
@@ -93,11 +94,27 @@ func New(config *Config) *Server {
 }
 
 // registerRoutes 注册所有路由
-func registerRoutes(r *router.Router, h *handlers.Handlers) {
-	// 静态文件服务 - 直接处理所有/static/开头的请求
-	staticHandler := http.StripPrefix("/static/", http.FileServer(http.Dir("./assets")))
+func registerRoutes(r *router.Router, h *handlers.Handlers, config *Config) {
+	// 静态文件服务 - 优先使用嵌入的文件系统
+	var staticHandler http.Handler
 
-	// 添加一个自定义的静态文件处理器到router的NotFound处理器中
+	// 尝试使用嵌入的文件系统
+	if config != nil && config.StaticFiles != (embed.FS{}) {
+		assetsFS, err := fs.Sub(config.StaticFiles, "assets")
+		if err != nil {
+			log.Printf("警告: 无法创建嵌入文件系统: %v，回退到文件系统", err)
+			staticHandler = http.StripPrefix("/static/", http.FileServer(http.Dir("./assets")))
+		} else {
+			staticHandler = http.StripPrefix("/static/", http.FileServer(http.FS(assetsFS)))
+			log.Printf("✅ 使用嵌入式静态文件系统")
+		}
+	} else {
+		// 回退到文件系统
+		staticHandler = http.StripPrefix("/static/", http.FileServer(http.Dir("./assets")))
+		log.Printf("⚠️  使用文件系统静态文件 (./assets)")
+	}
+
+	// 添加静态文件处理器到router的NotFound处理器中
 	originalNotFound := r.NotFound
 	r.NotFound = func(w http.ResponseWriter, req *http.Request) {
 		if strings.HasPrefix(req.URL.Path, "/static/") {
@@ -206,7 +223,7 @@ func (s *Server) printStartupInfo() {
 	fmt.Println("🖥️  DigWis Panel (原生 Go 版本)")
 	fmt.Println(strings.Repeat("=", 40))
 	fmt.Printf("🌐 地址: %s\n", s.httpServer.Addr)
-	fmt.Printf("📁 静态文件: %s\n", s.config.StaticDir)
+	fmt.Printf("📁 静态文件: 嵌入式 (embed)\n")
 	fmt.Printf("🐛 调试模式: %v\n", s.config.Debug)
 	fmt.Printf("⏱️  读取超时: %v\n", s.config.ReadTimeout)
 	fmt.Printf("⏱️  写入超时: %v\n", s.config.WriteTimeout)

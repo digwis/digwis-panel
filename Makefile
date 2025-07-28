@@ -1,7 +1,7 @@
 # DigWis Panel Makefile
 # 用于生产构建和 CI/CD，开发时请使用 Air: /home/parallels/go/bin/air
 
-.PHONY: help build build-css-prod clean install test release
+.PHONY: help build build-css-prod clean install test release-build release-auto deploy-local rollback
 
 # 默认目标
 help:
@@ -13,7 +13,15 @@ help:
 	@echo "🏭 生产构建:"
 	@echo "  build          - 构建完整项目 (生产版)"
 	@echo "  build-css-prod - 构建 CSS (生产版，压缩)"
-	@echo "  release        - 构建发布包"
+	@echo "  build-release  - 构建到 releases 目录"
+	@echo ""
+	@echo "� 快速部署:"
+	@echo "  deploy-local   - 编译并部署到本地生产环境"
+	@echo "  rollback       - 回滚到上一个版本"
+	@echo ""
+	@echo "📦 版本发布:"
+	@echo "  release-build  - 构建多平台发布包 (本地)"
+	@echo "  release-auto   - 自动发布到 GitHub (需要 VERSION 和 CHANGELOG)"
 	@echo ""
 	@echo "🛠️  工具:"
 	@echo "  install        - 安装依赖"
@@ -54,12 +62,19 @@ build: build-css-prod build-go
 build-release: build-css-prod build-go-release
 	@echo "🚀 发布构建完成 (./releases/digwis-panel)"
 
-# 构建多平台发布包
-release:
+# 构建多平台发布包（本地）
+release-build:
 	@echo "📦 构建多平台发布包..."
-	@chmod +x scripts/build/build-release.sh
-	@./scripts/build/build-release.sh
+	@chmod +x scripts/release.sh
+	@./scripts/release.sh $(VERSION) "$(CHANGELOG)"
 	@echo "✅ 多平台发布包构建完成"
+
+# 正式发布（自动化）
+release-auto:
+	@echo "🚀 正式发布版本..."
+	@chmod +x scripts/release.sh
+	@./scripts/release.sh $(VERSION) "$(CHANGELOG)" --auto
+	@echo "✅ 正式发布完成"
 
 # 清理构建文件
 clean:
@@ -95,6 +110,40 @@ test:
 dev:
 	@echo "🚀 启动开发环境 (Air 热重载)..."
 	./scripts/dev/start-air.sh
+
+# 快速部署到本地生产环境
+deploy-local:
+	@echo "🔨 编译嵌入式版本..."
+	go build -o digwis-panel .
+	@echo "🛑 停止服务..."
+	sudo systemctl stop digwis-panel
+	@echo "📦 备份当前版本..."
+	sudo cp /opt/digwis-panel/digwis-panel /opt/digwis-panel/digwis-panel.backup.$$(date +%s) 2>/dev/null || true
+	@echo "🔄 替换程序文件..."
+	sudo cp ./digwis-panel /opt/digwis-panel/digwis-panel
+	@echo "🚀 启动服务..."
+	sudo systemctl start digwis-panel
+	@echo "✅ 部署完成！访问: http://localhost:8080"
+	@echo ""
+	@echo "📊 服务状态："
+	@systemctl status digwis-panel --no-pager -l
+
+# 回滚到上一个版本
+rollback:
+	@echo "🔍 查找备份文件..."
+	@BACKUP_FILE=$$(ls -t /opt/digwis-panel/digwis-panel.backup.* 2>/dev/null | head -1); \
+	if [ -z "$$BACKUP_FILE" ]; then \
+		echo "❌ 没有找到备份文件"; \
+		exit 1; \
+	fi; \
+	echo "🛑 停止服务..."; \
+	sudo systemctl stop digwis-panel; \
+	echo "🔄 恢复备份版本: $$BACKUP_FILE"; \
+	sudo cp "$$BACKUP_FILE" /opt/digwis-panel/digwis-panel; \
+	echo "🚀 启动服务..."; \
+	sudo systemctl start digwis-panel; \
+	echo "✅ 回滚完成！"; \
+	systemctl status digwis-panel --no-pager -l
 
 # 开发提示
 dev-help:

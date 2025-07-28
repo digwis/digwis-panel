@@ -1,11 +1,15 @@
 package main
 
 import (
+	"embed"
 	"flag"
 	"log"
 
 	"server-panel/internal/server"
 )
+
+//go:embed assets/*
+var staticFiles embed.FS
 
 func main() {
 	// 命令行参数
@@ -18,10 +22,10 @@ func main() {
 
 	// 创建服务器配置
 	config := &server.Config{
-		Host:      *host,
-		Port:      *port,
-		Debug:     *debug,
-		StaticDir: "./assets",
+		Host:        *host,
+		Port:        *port,
+		Debug:       *debug,
+		StaticFiles: staticFiles,
 	}
 
 	// 创建服务器

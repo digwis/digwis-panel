@@ -1,111 +1,143 @@
-# 🚀 Go服务器管理面板
+# 🚀 DigWis Panel - Go 服务器管理面板
 
-一个基于Go语言开发的现代化服务器管理面板，支持系统安装后直接使用，无需复杂的依赖配置。
+一个基于 Go 语言开发的现代化服务器管理面板，支持嵌入式静态文件、一键部署和远程管理。
 
 ## ✨ 特性
 
 - **🔐 系统用户认证** - 直接使用系统用户账户登录，支持sudo/wheel/admin组权限验证
-- **📦 零依赖部署** - 单一二进制文件，无需安装PHP、Python等运行时
+- **📦 零依赖部署** - 单一二进制文件，静态文件嵌入，无需外部依赖
 - **🛠️ 环境管理** - 一键安装Nginx、PHP、MySQL、Node.js、Docker等开发环境
 - **📊 系统监控** - 实时监控CPU、内存、磁盘、网络等系统资源
-- **🎨 现代化界面** - 响应式设计，支持移动端访问
-- **⚡ 高性能** - Go语言开发，内存占用低，响应速度快
+- **🎨 现代化界面** - 基于 Templ + HTMX + Alpine.js + Tailwind CSS
+- **⚡ 高性能** - Go 原生开发，内存占用低，响应速度快
 - **🔒 安全可靠** - 会话管理、CSRF保护、登录限制等安全特性
+- **🚀 快速部署** - 支持远程一键安装、升级和卸载
 
 ## 🚀 快速开始
 
-### 方式一：一键安装（推荐）
+### 📦 一键安装（推荐）
 
-在你的VPS上执行以下命令即可自动安装：
-
+#### 标准安装
 ```bash
 curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash
 ```
 
-或者使用 wget：
-
+#### 安装选项
 ```bash
-wget -qO- https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash
-```
-
-**安装选项：**
-
-```bash
-# 详细模式（显示详细安装信息）
-curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash -s -- --verbose
-
-# 静默模式（最小输出）
+# 静默安装
 curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash -s -- --quiet
+
+# 详细安装
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash -s -- --verbose
 ```
 
 **安装特点：**
 - 🚀 **预编译二进制** - 无需现场编译，安装速度快
-- 🌐 **智能CDN选择** - 自动选择最快的下载节点
-- 🔄 **多重备用** - CDN失败时自动切换到GitHub
+- 📦 **嵌入式资源** - 静态文件打包在二进制中，无需外部文件
+- 🌐 **智能下载** - 自动选择最快的下载节点
 - 🛡️ **安全可靠** - 支持文件校验和完整性检查
 
-**安装过程：**
-- ✅ 自动检测系统环境
-- ✅ 安装Go语言环境
-- ✅ 从GitHub拉取最新源码
-- ✅ 编译并安装面板
-- ✅ 配置系统服务
-- ✅ 启动面板服务
+### 🔄 一键升级
 
-### 方式二：手动构建
+#### 升级到最新版本
+```bash
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/upgrade.sh | sudo bash
+```
+
+#### 升级选项
+```bash
+# 升级到指定版本
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/upgrade.sh | sudo bash -s -- --version v1.2.0
+
+# 静默升级
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/upgrade.sh | sudo bash -s -- --quiet
+
+# 详细升级日志
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/upgrade.sh | sudo bash -s -- --verbose
+```
+
+### 🗑️ 一键卸载
+
+#### 交互式卸载
+```bash
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/uninstall.sh | sudo bash
+```
+
+#### 自动确认卸载
+```bash
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/uninstall.sh | sudo bash -s -- --yes
+```
+
+### 🛠️ 手动构建
 
 ```bash
 # 克隆项目
 git clone https://github.com/digwis/digwis-panel.git
 cd digwis-panel
 
-# 构建二进制文件
-chmod +x build.sh
-./build.sh
+# 安装依赖
+go mod tidy
 
-# 安装为系统服务
-sudo chmod +x install-remote.sh
-sudo ./install-remote.sh
+# 生成模板（如果有 templ）
+templ generate
+
+# 构建项目
+make build
+
+# 本地部署测试
+make deploy-local
 ```
 
-### 访问面板
+### 🌐 访问面板
 
 安装完成后，打开浏览器访问：
-- 本地访问：`http://localhost:8080`
-- 外网访问：`http://your-server-ip:8080`
+- **本地访问**：`http://localhost:8080`
+- **外网访问**：`http://YOUR_SERVER_IP:8080`
 
 使用具有管理员权限的系统用户账户登录。
 
 ## 📋 系统要求
 
-- **操作系统**: Linux (Ubuntu, Debian, CentOS, RHEL等)
-- **架构**: x86_64, ARM64, ARM
+### 支持的系统
+- Ubuntu 18.04+
+- Debian 9+
+- CentOS 7+
+- RHEL 7+
+- Fedora 30+
+- Rocky Linux 8+
+- AlmaLinux 8+
+
+### 支持的架构
+- x86_64 (amd64)
+- ARM64 (aarch64)
+- ARM (armv7l)
+
+### 系统要求
 - **权限**: 需要root权限运行
 - **内存**: 最低64MB RAM
 - **磁盘**: 最低100MB可用空间
 
-## 🔧 管理命令
+## 🛠️ 管理命令
 
-安装完成后，可以使用以下命令管理面板：
-
+### 服务管理
 ```bash
-# 查看服务状态
-systemctl status digwis
+# 查看状态
+systemctl status digwis-panel
 
 # 启动服务
-systemctl start digwis
+sudo systemctl start digwis-panel
 
 # 停止服务
-systemctl stop digwis
+sudo systemctl stop digwis-panel
 
 # 重启服务
-systemctl restart digwis
+sudo systemctl restart digwis-panel
 
-# 查看实时日志
-journalctl -u digwis -f
+# 查看日志
+journalctl -u digwis-panel -f
 
 # 开机自启
-systemctl enable digwis
+sudo systemctl enable digwis-panel
 ```
 
 ### 防火墙配置
@@ -124,6 +156,35 @@ sudo firewall-cmd --reload
 sudo iptables -I INPUT -p tcp --dport 8080 -j ACCEPT
 ```
 
+## 📋 使用场景
+
+### 🆕 全新服务器部署
+```bash
+# 1. 一键安装
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash
+
+# 2. 访问面板
+# http://YOUR_SERVER_IP:8080
+```
+
+### 🔄 版本升级
+```bash
+# 1. 一键升级
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/upgrade.sh | sudo bash
+
+# 2. 验证功能
+# 访问面板测试功能是否正常
+```
+
+### 🗑️ 完全卸载
+```bash
+# 1. 一键卸载
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/uninstall.sh | sudo bash -s -- --yes
+
+# 2. 验证清理
+# 检查是否完全清理干净
+```
+
 ## 🛠️ 支持的环境
 
 面板支持一键安装以下开发环境：
@@ -140,21 +201,20 @@ sudo iptables -I INPUT -p tcp --dport 8080 -j ACCEPT
 ## 📁 目录结构
 
 ```
-/opt/digwis/                # 程序安装目录
+/opt/digwis-panel/          # 程序安装目录
 ├── digwis-panel            # 主程序二进制文件
+├── data/                   # 应用数据目录
+└── digwis-panel.backup.*   # 自动备份文件
 
-/etc/digwis/                # 配置目录
+/etc/digwis-panel/          # 配置目录
 ├── config.yaml             # 主配置文件
 
-/var/lib/digwis/            # 数据目录
-├── data/                   # 应用数据
-
-/var/log/digwis/            # 日志目录
+/var/log/digwis-panel/      # 日志目录
 ├── access.log              # 访问日志
 └── error.log               # 错误日志
 
 /etc/systemd/system/        # 系统服务
-├── digwis.service          # systemd服务文件
+├── digwis-panel.service    # systemd服务文件
 ```
 
 ## ⚙️ 配置文件
@@ -186,37 +246,79 @@ paths:
   backup_dir: "/var/backups/server-panel"
 ```
 
-## 🔐 安全说明
+## � 安全注意事项
 
+### 脚本安全
+1. **仅从官方源下载**：确保使用官方 GitHub 仓库链接
+2. **使用 HTTPS**：所有命令都使用 `https://` 协议
+3. **验证脚本内容**：可以先下载脚本查看内容再执行
+4. **备份重要数据**：升级前确保重要数据已备份
+
+### 面板安全
 1. **用户权限**: 只允许具有管理员权限的用户登录
 2. **会话管理**: 自动会话超时和安全的会话ID生成
 3. **登录保护**: 失败次数限制和IP锁定机制
 4. **CSRF保护**: 防止跨站请求伪造攻击
 5. **安全日志**: 记录所有认证尝试和系统操作
 
-## 🐛 故障排除
+## 📞 获取帮助
+
+### 查看脚本帮助
+```bash
+# 安装脚本帮助
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | bash -s -- --help
+
+# 升级脚本帮助
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/upgrade.sh | bash -s -- --help
+
+# 卸载脚本帮助
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/uninstall.sh | bash -s -- --help
+```
+
+## ⚡ 快速故障排除
+
+### 安装失败
+```bash
+# 查看详细安装日志
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash -s -- --verbose
+
+# 手动检查
+systemctl status digwis-panel
+journalctl -u digwis-panel -n 50
+```
+
+### 升级失败
+```bash
+# 查看服务状态
+systemctl status digwis-panel
+
+# 查看错误日志
+journalctl -u digwis-panel -n 20
+
+# 手动回滚（如果有备份）
+sudo systemctl stop digwis-panel
+sudo cp /opt/digwis-panel/digwis-panel.backup.* /opt/digwis-panel/digwis-panel
+sudo systemctl start digwis-panel
+```
 
 ### 服务无法启动
-
 ```bash
-# 查看详细日志
-journalctl -u server-panel -f
+# 检查程序文件
+ls -la /opt/digwis-panel/
 
-# 检查配置文件
-cat /etc/server-panel/config.yaml
+# 检查权限
+sudo chmod +x /opt/digwis-panel/digwis-panel
 
-# 检查端口占用
-netstat -tlnp | grep 8080
+# 手动启动测试
+sudo /opt/digwis-panel/digwis-panel -port 8080 -debug
 ```
 
 ### 无法登录
-
 1. 确认用户在管理员组中：`groups username`
 2. 检查密码是否正确
-3. 查看认证日志：`server-panel logs`
+3. 查看认证日志：`journalctl -u digwis-panel -f`
 
 ### 环境安装失败
-
 1. 检查网络连接
 2. 确认系统软件包管理器正常
 3. 查看安装日志获取详细错误信息
@@ -273,10 +375,33 @@ MIT License
 
 ## 🔗 快速链接
 
+### 一键命令
 ```bash
-# 一键安装命令
+# 安装
 curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash
 
-# 或者使用 wget
-wget -qO- https://raw.githubusercontent.com/digwis/digwis-panel/main/install.sh | sudo bash
+# 升级
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/upgrade.sh | sudo bash
+
+# 卸载
+curl -sSL https://raw.githubusercontent.com/digwis/digwis-panel/main/uninstall.sh | sudo bash -s -- --yes
 ```
+
+### 开发命令
+```bash
+# 本地构建
+make build
+
+# 本地部署测试
+make deploy-local
+
+# 回滚
+make rollback
+
+# 发布版本
+./scripts/release.sh v1.0.0 "版本说明"
+```
+
+---
+
+**🎉 享受 DigWis Panel 带来的便捷服务器管理体验！**

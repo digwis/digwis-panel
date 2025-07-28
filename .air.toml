@@ -3,28 +3,28 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  args_bin = ["-port", "9090", "-debug"]
-  bin = "./tmp/main"
-  cmd = "go build -o ./tmp/main ."
-  delay = 2000  # 增加延迟，减少频繁重建
+  args_bin = ["-port", "9090", "-host", "0.0.0.0"]
+  bin = "./tmp/digwis-panel"
+  cmd = "go build -ldflags='-s -w' -o ./tmp/digwis-panel ."
+  delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata", "node_modules", "data", "releases"]
   exclude_file = []
-  exclude_regex = ["_test.go", "_templ.go", "\\.db$", "\\.sqlite$"]  # 排除数据库文件
-  exclude_unchanged = true  # 启用，避免不必要的重建
+  exclude_regex = ["_test.go", "_templ.go", "\\.db$", "\\.sqlite$"]
+  exclude_unchanged = true
   follow_symlink = false
   full_bin = ""
   include_dir = []
-  include_ext = ["go", "templ"]  # 只监控必要的文件类型
+  include_ext = ["go", "templ"]
   include_file = []
-  kill_delay = "2s"  # 增加停止延迟
+  kill_delay = "2s"
   log = "build-errors.log"
   poll = false
   poll_interval = 0
   post_cmd = []
-  pre_cmd = ["npm run build-templ"]
+  pre_cmd = ["templ generate", "npm run build-css-prod"]
   rerun = false
-  rerun_delay = 1000  # 增加重新运行延迟
-  send_interrupt = true  # 使用中断信号而不是强制杀死
+  rerun_delay = 500
+  send_interrupt = true
   stop_on_root = false
 
 [color]

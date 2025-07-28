@@ -526,7 +526,7 @@ User=root
 WorkingDirectory=$INSTALL_DIR
 Environment=DIGWIS_MODE=production
 Environment=DIGWIS_DATA_DIR=$INSTALL_DIR/data
-ExecStart=$INSTALL_DIR/digwis-panel -config $CONFIG_DIR/config.yaml -port 8080
+ExecStart=$INSTALL_DIR/digwis-panel -port 8080
 Restart=always
 RestartSec=5
 StandardOutput=journal
