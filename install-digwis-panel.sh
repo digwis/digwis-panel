@@ -122,6 +122,129 @@ check_root() {
     fi
 }
 
+# 检查旧版本安装
+check_existing_installation() {
+    print_step "检查现有安装..."
+
+    local has_old_installation=false
+    local old_items=()
+
+    # 检查安装目录
+    if [ -d "$INSTALL_DIR" ]; then
+        has_old_installation=true
+        old_items+=("安装目录: $INSTALL_DIR")
+    fi
+
+    # 检查配置目录
+    if [ -d "$CONFIG_DIR" ]; then
+        has_old_installation=true
+        old_items+=("配置目录: $CONFIG_DIR")
+    fi
+
+    # 检查系统服务
+    if systemctl list-unit-files | grep -q "digwis-panel.service"; then
+        has_old_installation=true
+        old_items+=("系统服务: digwis-panel.service")
+    fi
+
+    # 检查运行中的进程
+    if pgrep -f "digwis-panel" > /dev/null; then
+        has_old_installation=true
+        old_items+=("运行中的进程")
+    fi
+
+    if [ "$has_old_installation" = true ]; then
+        print_warning "检测到已存在的 DigWis Panel 安装："
+        for item in "${old_items[@]}"; do
+            print_info "  - $item"
+        done
+        print_info ""
+        print_warning "建议完全清理旧版本后重新安装以避免冲突"
+        print_info ""
+
+        if [ "$QUIET" != "true" ]; then
+            echo -n "是否要清理旧版本并重新安装？[y/N]: "
+            read -r response
+            case "$response" in
+                [yY][eE][sS]|[yY])
+                    cleanup_old_installation
+                    ;;
+                *)
+                    print_warning "继续安装可能会遇到冲突问题"
+                    print_info "如果安装失败，请手动清理后重试"
+                    ;;
+            esac
+        else
+            print_info "静默模式：跳过旧版本清理"
+        fi
+    else
+        print_success "未检测到旧版本安装"
+    fi
+}
+
+# 清理旧版本安装
+cleanup_old_installation() {
+    print_step "清理旧版本安装..."
+
+    # 停止服务
+    if systemctl is-active --quiet digwis-panel 2>/dev/null; then
+        print_verbose "停止 digwis-panel 服务..."
+        systemctl stop digwis-panel
+    fi
+
+    # 禁用服务
+    if systemctl is-enabled --quiet digwis-panel 2>/dev/null; then
+        print_verbose "禁用 digwis-panel 服务..."
+        systemctl disable digwis-panel
+    fi
+
+    # 删除服务文件
+    if [ -f "/etc/systemd/system/digwis-panel.service" ]; then
+        print_verbose "删除服务文件..."
+        rm -f /etc/systemd/system/digwis-panel.service
+        systemctl daemon-reload
+    fi
+
+    # 杀死残留进程
+    if pgrep -f "digwis-panel" > /dev/null; then
+        print_verbose "终止残留进程..."
+        pkill -f "digwis-panel" || true
+        sleep 2
+        pkill -9 -f "digwis-panel" || true
+    fi
+
+    # 备份配置文件
+    if [ -d "$CONFIG_DIR" ]; then
+        local backup_dir="/tmp/digwis-panel-config-backup-$(date +%s)"
+        print_verbose "备份配置文件到: $backup_dir"
+        cp -r "$CONFIG_DIR" "$backup_dir"
+        print_info "配置文件已备份到: $backup_dir"
+    fi
+
+    # 删除安装目录
+    if [ -d "$INSTALL_DIR" ]; then
+        print_verbose "删除安装目录..."
+        rm -rf "$INSTALL_DIR"
+    fi
+
+    # 删除配置目录
+    if [ -d "$CONFIG_DIR" ]; then
+        print_verbose "删除配置目录..."
+        rm -rf "$CONFIG_DIR"
+    fi
+
+    # 删除日志目录
+    if [ -d "/var/log/digwis-panel" ]; then
+        print_verbose "删除日志目录..."
+        rm -rf "/var/log/digwis-panel"
+    fi
+
+    # 删除临时文件
+    rm -rf "$TEMP_DIR"
+
+    print_success "旧版本清理完成"
+}
+
 # 检测系统架构
 detect_arch() {
     local machine_arch=$(uname -m)
@@ -500,6 +623,7 @@ show_result() {
 main() {
     show_logo
     check_root
+    check_existing_installation
     detect_arch
     detect_os
     select_download_node
