@@ -1,6 +1,6 @@
 {
-    "version": "v1.0.1",
-    "build_time": "2025-07-28T06:52:55Z",
+    "version": "v0.2.0",
+    "build_time": "2025-07-28T07:47:26Z",
     "platforms": [
         "linux/amd64",
         "linux/arm64", 
