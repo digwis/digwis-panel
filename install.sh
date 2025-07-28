@@ -9,6 +9,7 @@ set -e
 # 默认配置
 VERBOSE=false
 QUIET=false
+NO_CLEANUP=false
 GITHUB_REPO="digwis/digwis-panel"
 INSTALL_DIR="/opt/digwis-panel"
 CONFIG_DIR="/etc/digwis-panel"
@@ -42,6 +43,10 @@ while [[ $# -gt 0 ]]; do
             QUIET=true
             shift
             ;;
+        --no-cleanup)
+            NO_CLEANUP=true
+            shift
+            ;;
         --help|-h)
             echo "DigWis 面板安装脚本"
             echo ""
@@ -51,6 +56,7 @@ while [[ $# -gt 0 ]]; do
             echo "选项:"
             echo "  --verbose, -v    显示详细安装信息"
             echo "  --quiet, -q      静默安装模式"
+            echo "  --no-cleanup     跳过旧版本清理（保留现有安装）"
             echo "  --help, -h       显示此帮助信息"
             exit 0
             ;;
@@ -159,23 +165,13 @@ check_existing_installation() {
             print_info "  - $item"
         done
         print_info ""
-        print_warning "建议完全清理旧版本后重新安装以避免冲突"
-        print_info ""
 
-        if [ "$QUIET" != "true" ]; then
-            echo -n "是否要清理旧版本并重新安装？[y/N]: "
-            read -r response < /dev/tty
-            case "$response" in
-                [yY][eE][sS]|[yY])
-                    cleanup_old_installation
-                    ;;
-                *)
-                    print_warning "继续安装可能会遇到冲突问题"
-                    print_info "如果安装失败，请手动清理后重试"
-                    ;;
-            esac
+        if [ "$NO_CLEANUP" = true ]; then
+            print_info "跳过旧版本清理（--no-cleanup 参数）"
+            print_warning "继续安装可能会遇到冲突问题"
         else
-            print_info "静默模式：跳过旧版本清理"
+            print_info "自动清理旧版本以避免冲突..."
+            cleanup_old_installation
         fi
     else
         print_success "未检测到旧版本安装"
