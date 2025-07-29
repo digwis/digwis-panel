@@ -7,8 +7,8 @@ set -e
 
 # 配置
 RELEASE_DIR="releases"
-PLATFORMS=("linux/amd64" "linux/arm64" "linux/arm")
-ARCHS=("amd64" "arm64" "arm")
+PLATFORMS=("linux/amd64")
+ARCHS=("amd64")
 
 # 颜色定义
 RED='\033[0;31m'
@@ -77,11 +77,15 @@ build_all_platforms() {
         # 设置环境变量
         export GOOS=$os
         export GOARCH=$arch_name
-        export CGO_ENABLED=0  # 禁用 CGO 以支持交叉编译
+        export CGO_ENABLED=1  # 启用 CGO 以支持 sqlite3
         
         # 构建
         local binary_name="digwis-panel-$version-$os-$arch"
-        go build -ldflags "-s -w" -o "$binary_name" .
+        if [ "$arch_name" = "amd64" ]; then
+            CC=x86_64-linux-gnu-gcc go build -ldflags "-s -w" -o "$binary_name" .
+        else
+            go build -ldflags "-s -w" -o "$binary_name" .
+        fi
         
         # 创建压缩包
         local package_name="$binary_name.tar.gz"
@@ -115,9 +119,7 @@ update_version_json() {
         "$version": {
             "build_time": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": [
-                "linux/amd64",
-                "linux/arm64", 
-                "linux/arm"
+                "linux/amd64"
             ],
             "stable": true,
             "changelog": "$changelog"

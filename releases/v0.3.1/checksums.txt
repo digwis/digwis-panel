@@ -1,0 +1,1 @@
+3a03104b3dcb3e455662b38f4c00ea8276f9eb841b33836d844fdde11be3addc  digwis-panel-v0.3.1-linux-amd64.tar.gz

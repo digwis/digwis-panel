@@ -44,14 +44,14 @@ build-css-prod:
 # 构建 Go 程序 (开发版 - 根目录)
 build-go:
 	@echo "🔨 构建 Go 程序 (开发版)..."
-	@export GOPROXY=https://goproxy.cn,direct && go build -ldflags="-s -w" -o digwis-panel .
+	@export GOPROXY=https://goproxy.cn,direct && CGO_ENABLED=1 go build -ldflags="-s -w" -o digwis-panel .
 	@echo "✅ Go 程序构建完成: ./digwis-panel"
 
 # 构建 Go 程序到 releases 目录
 build-go-release:
 	@echo "🔨 构建 Go 程序到 releases 目录..."
 	@mkdir -p releases
-	@export GOPROXY=https://goproxy.cn,direct && go build -ldflags="-s -w" -o releases/digwis-panel .
+	@export GOPROXY=https://goproxy.cn,direct && CGO_ENABLED=1 go build -ldflags="-s -w" -o releases/digwis-panel .
 	@echo "✅ Go 程序构建完成: ./releases/digwis-panel"
 
 # 快速构建 (开发版 - 根目录)
@@ -114,7 +114,7 @@ dev:
 # 快速部署到本地生产环境
 deploy-local:
 	@echo "🔨 编译嵌入式版本..."
-	go build -o digwis-panel .
+	CGO_ENABLED=1 go build -o digwis-panel .
 	@echo "🛑 停止服务..."
 	sudo systemctl stop digwis-panel
 	@echo "📦 备份当前版本..."
