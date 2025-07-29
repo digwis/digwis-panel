@@ -317,7 +317,7 @@ get_latest_version() {
 
     # 尝试从仓库的version.json获取版本号
     local version_file="${DOWNLOAD_URL}/version.json"
-    VERSION=$(curl -s --connect-timeout 5 --max-time 10 "$version_file" 2>/dev/null | grep -o '"latest":"[^"]*"' | cut -d'"' -f4)
+    VERSION=$(curl -s --connect-timeout 5 --max-time 10 "$version_file" 2>/dev/null | grep -o '"latest":[[:space:]]*"[^"]*"' | cut -d'"' -f4)
 
     # 如果失败，尝试从GitHub API获取
     if [ -z "$VERSION" ]; then
