@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"os/user"
 	"strings"
@@ -772,7 +773,7 @@ func (h *Handlers) TestSSEHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// SSEStatsHandler SSE 统计数据处理器 - 临时禁用认证以测试数据流
+// SSEStatsHandler SSE 统计数据处理器 - 优化版本
 func (h *Handlers) SSEStatsHandler(w http.ResponseWriter, r *http.Request) {
 	// 临时注释认证检查以测试数据流
 	/*
@@ -805,18 +806,24 @@ func (h *Handlers) SSEStatsHandler(w http.ResponseWriter, r *http.Request) {
 		flusher.Flush()
 	}
 
-	// 创建定时器
-	ticker := time.NewTicker(3 * time.Second) // 减少到3秒以提高响应性
+	// 创建智能推送管理器
+	pushManager := &smartPushManager{
+		lastStats: nil,
+		threshold: 5.0, // CPU/内存变化超过5%才推送
+	}
+
+	// 创建定时器 - 增加到15秒以进一步减少负载
+	ticker := time.NewTicker(15 * time.Second)
 	defer ticker.Stop()
 
 	// 发送初始数据
-	h.sendSystemStatsImproved(w, flusher, hasFlusher)
+	h.sendSystemStatsOptimized(w, flusher, hasFlusher, pushManager)
 
 	// 持续发送数据
 	for {
 		select {
 		case <-ticker.C:
-			h.sendSystemStatsImproved(w, flusher, hasFlusher)
+			h.sendSystemStatsOptimized(w, flusher, hasFlusher, pushManager)
 		case <-r.Context().Done():
 			// 客户端断开连接
 			return
@@ -824,8 +831,49 @@ func (h *Handlers) SSEStatsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// sendSystemStatsImproved 发送系统统计数据 - 改进版本
-func (h *Handlers) sendSystemStatsImproved(w http.ResponseWriter, flusher http.Flusher, hasFlusher bool) {
+// smartPushManager 智能推送管理器
+type smartPushManager struct {
+	lastStats *system.SystemStats
+	threshold float64
+}
+
+// shouldPush 判断是否应该推送数据
+func (spm *smartPushManager) shouldPush(newStats *system.SystemStats) bool {
+	if spm.lastStats == nil {
+		return true // 首次推送
+	}
+
+	// 检查CPU使用率变化
+	cpuDiff := abs(newStats.CPU.Usage - spm.lastStats.CPU.Usage)
+	if cpuDiff > spm.threshold {
+		return true
+	}
+
+	// 检查内存使用率变化
+	memDiff := abs(newStats.Memory.Usage - spm.lastStats.Memory.Usage)
+	if memDiff > spm.threshold {
+		return true
+	}
+
+	// 检查磁盘使用率变化（阈值更大，因为磁盘变化较慢）
+	diskDiff := abs(newStats.Disk.Usage - spm.lastStats.Disk.Usage)
+	if diskDiff > spm.threshold*2 {
+		return true
+	}
+
+	return false
+}
+
+// abs 计算绝对值
+func abs(x float64) float64 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+// sendSystemStatsOptimized 发送系统统计数据 - 优化版本
+func (h *Handlers) sendSystemStatsOptimized(w http.ResponseWriter, flusher http.Flusher, hasFlusher bool, pushManager *smartPushManager) {
 	stats, err := h.systemMonitor.GetSystemStats()
 	if err != nil {
 		fmt.Fprintf(w, "event: error\ndata: {\"error\": \"%s\"}\n\n", err.Error())
@@ -835,8 +883,42 @@ func (h *Handlers) sendSystemStatsImproved(w http.ResponseWriter, flusher http.F
 		return
 	}
 
-	// 直接发送stats数据
-	data, err := json.Marshal(stats)
+	// 检查是否需要推送
+	if !pushManager.shouldPush(stats) {
+		// 发送心跳包保持连接
+		fmt.Fprintf(w, "event: heartbeat\ndata: {\"timestamp\": \"%s\"}\n\n", time.Now().Format(time.RFC3339))
+		if hasFlusher {
+			flusher.Flush()
+		}
+		return
+	}
+
+	// 更新最后推送的数据
+	pushManager.lastStats = stats
+
+	// 只发送关键数据，减少传输量
+	compactStats := map[string]interface{}{
+		"cpu": map[string]interface{}{
+			"usage": roundFloat(stats.CPU.Usage, 1),
+			"cores": stats.CPU.Cores,
+		},
+		"memory": map[string]interface{}{
+			"usage": roundFloat(stats.Memory.Usage, 1),
+			"used":  stats.Memory.Used,
+			"total": stats.Memory.Total,
+		},
+		"disk": map[string]interface{}{
+			"usage": roundFloat(stats.Disk.Usage, 1),
+			"used":  stats.Disk.Used,
+			"total": stats.Disk.Total,
+		},
+		"load_avg": map[string]interface{}{
+			"load1": roundFloat(stats.LoadAvg.Load1, 2),
+		},
+		"timestamp": stats.Timestamp.Format(time.RFC3339),
+	}
+
+	data, err := json.Marshal(compactStats)
 	if err != nil {
 		fmt.Fprintf(w, "event: error\ndata: {\"error\": \"数据序列化失败\"}\n\n")
 		if hasFlusher {
@@ -845,11 +927,27 @@ func (h *Handlers) sendSystemStatsImproved(w http.ResponseWriter, flusher http.F
 		return
 	}
 
-	// 添加时间戳以便调试
+	// 发送压缩后的数据
 	timestamp := time.Now().Format(time.RFC3339)
 	fmt.Fprintf(w, "event: stats\ndata: %s\nid: %s\n\n", data, timestamp)
 
 	if hasFlusher {
 		flusher.Flush()
 	}
+}
+
+// sendSystemStatsImproved 发送系统统计数据 - 改进版本（保持向后兼容）
+func (h *Handlers) sendSystemStatsImproved(w http.ResponseWriter, flusher http.Flusher, hasFlusher bool) {
+	// 创建临时推送管理器
+	pushManager := &smartPushManager{
+		lastStats: nil,
+		threshold: 0, // 总是推送，保持原有行为
+	}
+	h.sendSystemStatsOptimized(w, flusher, hasFlusher, pushManager)
+}
+
+// roundFloat 四舍五入浮点数
+func roundFloat(val float64, precision int) float64 {
+	ratio := math.Pow(10, float64(precision))
+	return math.Round(val*ratio) / ratio
 }

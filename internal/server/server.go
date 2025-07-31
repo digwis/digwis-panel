@@ -1,14 +1,17 @@
 package server
 
 import (
+	"compress/gzip"
 	"context"
 	"embed"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -39,15 +42,15 @@ type Config struct {
 	StaticFiles  embed.FS      `json:"-"` // 嵌入的静态文件
 }
 
-// DefaultConfig 默认配置
+// DefaultConfig 默认配置 - 优化版本
 func DefaultConfig() *Config {
 	return &Config{
 		Host:         "127.0.0.1",
 		Port:         "8080",
 		Debug:        false,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  30 * time.Second,  // 增加读取超时，适应VPS环境
+		WriteTimeout: 30 * time.Second,  // 增加写入超时，适应SSE长连接
+		IdleTimeout:  120 * time.Second, // 增加空闲超时，减少连接重建
 	}
 }
 
@@ -63,7 +66,10 @@ func New(config *Config) *Server {
 	// 添加全局中间件
 	r.Use(middleware.Logger())
 	r.Use(middleware.Recovery())
+	r.Use(middleware.Performance()) // 性能监控
 	r.Use(middleware.CORS())
+	// 注意：RateLimit中间件可以根据需要启用
+	// r.Use(middleware.RateLimit())
 
 	// 初始化组件
 	systemMonitor := system.NewMonitor()
@@ -76,14 +82,20 @@ func New(config *Config) *Server {
 	// 注册路由
 	registerRoutes(r, h, config)
 
-	// 创建 HTTP 服务器
+	// 创建 HTTP 服务器 - 优化配置
 	httpServer := &http.Server{
-		Addr:         fmt.Sprintf("%s:%s", config.Host, config.Port),
-		Handler:      r,
-		ReadTimeout:  config.ReadTimeout,
-		WriteTimeout: config.WriteTimeout,
-		IdleTimeout:  config.IdleTimeout,
+		Addr:           fmt.Sprintf("%s:%s", config.Host, config.Port),
+		Handler:        r,
+		ReadTimeout:    config.ReadTimeout,
+		WriteTimeout:   config.WriteTimeout,
+		IdleTimeout:    config.IdleTimeout,
 		MaxHeaderBytes: 1 << 20, // 1MB
+
+		// 优化TCP连接设置
+		ReadHeaderTimeout: 10 * time.Second, // 防止慢速攻击
+
+		// 启用HTTP/2支持（如果可用）
+		// TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
 	}
 
 	return &Server{
@@ -95,7 +107,7 @@ func New(config *Config) *Server {
 
 // registerRoutes 注册所有路由
 func registerRoutes(r *router.Router, h *handlers.Handlers, config *Config) {
-	// 静态文件服务 - 优先使用嵌入的文件系统
+	// 静态文件服务 - 优化版本，支持压缩和缓存
 	var staticHandler http.Handler
 
 	// 尝试使用嵌入的文件系统
@@ -103,21 +115,23 @@ func registerRoutes(r *router.Router, h *handlers.Handlers, config *Config) {
 		assetsFS, err := fs.Sub(config.StaticFiles, "assets")
 		if err != nil {
 			log.Printf("警告: 无法创建嵌入文件系统: %v，回退到文件系统", err)
-			staticHandler = http.StripPrefix("/static/", http.FileServer(http.Dir("./assets")))
+			staticHandler = createOptimizedStaticHandler(http.Dir("./assets"))
 		} else {
-			staticHandler = http.StripPrefix("/static/", http.FileServer(http.FS(assetsFS)))
-			log.Printf("✅ 使用嵌入式静态文件系统")
+			staticHandler = createOptimizedStaticHandler(http.FS(assetsFS))
+			log.Printf("✅ 使用嵌入式静态文件系统（已优化）")
 		}
 	} else {
 		// 回退到文件系统
-		staticHandler = http.StripPrefix("/static/", http.FileServer(http.Dir("./assets")))
-		log.Printf("⚠️  使用文件系统静态文件 (./assets)")
+		staticHandler = createOptimizedStaticHandler(http.Dir("./assets"))
+		log.Printf("⚠️  使用文件系统静态文件 (./assets) - 已优化")
 	}
 
 	// 添加静态文件处理器到router的NotFound处理器中
 	originalNotFound := r.NotFound
 	r.NotFound = func(w http.ResponseWriter, req *http.Request) {
 		if strings.HasPrefix(req.URL.Path, "/static/") {
+			// 移除 /static/ 前缀
+			req.URL.Path = strings.TrimPrefix(req.URL.Path, "/static")
 			staticHandler.ServeHTTP(w, req)
 			return
 		}
@@ -216,6 +230,115 @@ func (s *Server) StartWithGracefulShutdown() error {
 // Stop 停止服务器
 func (s *Server) Stop(ctx context.Context) error {
 	return s.httpServer.Shutdown(ctx)
+}
+
+// createOptimizedStaticHandler 创建优化的静态文件处理器
+func createOptimizedStaticHandler(fileSystem http.FileSystem) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 设置缓存头
+		setCacheHeaders(w, r.URL.Path)
+
+		// 检查是否支持gzip压缩
+		if shouldCompress(r.URL.Path) && acceptsGzip(r) {
+			// 尝试提供gzip压缩版本
+			if serveCompressed(w, r, fileSystem) {
+				return
+			}
+		}
+
+		// 提供原始文件
+		http.FileServer(fileSystem).ServeHTTP(w, r)
+	})
+}
+
+// setCacheHeaders 设置缓存头
+func setCacheHeaders(w http.ResponseWriter, path string) {
+	ext := filepath.Ext(path)
+
+	switch ext {
+	case ".css", ".js":
+		// CSS和JS文件缓存1小时
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+	case ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico":
+		// 图片文件缓存1天
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+	case ".woff", ".woff2", ".ttf", ".eot":
+		// 字体文件缓存1周
+		w.Header().Set("Cache-Control", "public, max-age=604800")
+	default:
+		// 其他文件缓存1小时
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+	}
+
+	// 添加ETag支持
+	w.Header().Set("ETag", fmt.Sprintf(`"%x"`, time.Now().Unix()))
+}
+
+// shouldCompress 判断文件是否应该压缩
+func shouldCompress(path string) bool {
+	ext := filepath.Ext(path)
+	compressibleTypes := map[string]bool{
+		".css":  true,
+		".js":   true,
+		".html": true,
+		".json": true,
+		".xml":  true,
+		".svg":  true,
+	}
+	return compressibleTypes[ext]
+}
+
+// acceptsGzip 检查客户端是否支持gzip
+func acceptsGzip(r *http.Request) bool {
+	return strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
+}
+
+// serveCompressed 提供gzip压缩的文件
+func serveCompressed(w http.ResponseWriter, r *http.Request, fileSystem http.FileSystem) bool {
+	file, err := fileSystem.Open(r.URL.Path)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+
+	stat, err := file.Stat()
+	if err != nil || stat.IsDir() {
+		return false
+	}
+
+	// 设置gzip头
+	w.Header().Set("Content-Encoding", "gzip")
+	w.Header().Set("Content-Type", getContentType(r.URL.Path))
+
+	// 创建gzip写入器
+	gzipWriter := gzip.NewWriter(w)
+	defer gzipWriter.Close()
+
+	// 复制文件内容到gzip写入器
+	_, err = io.Copy(gzipWriter, file)
+	return err == nil
+}
+
+// getContentType 获取内容类型
+func getContentType(path string) string {
+	ext := filepath.Ext(path)
+	contentTypes := map[string]string{
+		".css":  "text/css; charset=utf-8",
+		".js":   "application/javascript; charset=utf-8",
+		".html": "text/html; charset=utf-8",
+		".json": "application/json; charset=utf-8",
+		".svg":  "image/svg+xml",
+		".png":  "image/png",
+		".jpg":  "image/jpeg",
+		".jpeg": "image/jpeg",
+		".gif":  "image/gif",
+		".ico":  "image/x-icon",
+	}
+
+	if contentType, exists := contentTypes[ext]; exists {
+		return contentType
+	}
+	return "application/octet-stream"
 }
 
 // printStartupInfo 打印启动信息

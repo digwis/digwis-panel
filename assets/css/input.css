@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Alpine.js x-cloak 防止闪现 */
+[x-cloak] {
+  display: none !important;
+}
+
 /* Tailwind CSS v4 配置 - 自定义暗黑模式变体 */
 @custom-variant dark (&:where(.dark, .dark *));
 

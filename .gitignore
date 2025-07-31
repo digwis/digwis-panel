@@ -55,6 +55,9 @@ tmp/
 temp/
 *.tmp
 
+# Local tools
+tools/
+
 # Backup files
 *.bak
 *.backup

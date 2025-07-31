@@ -1,17 +1,48 @@
 package system
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+
+	"server-panel/internal/cache"
 )
 
 // Monitor 系统监控器
-type Monitor struct{}
+type Monitor struct {
+	cache      *dataCache
+	cacheMutex sync.RWMutex
+}
+
+// dataCache 数据缓存
+type dataCache struct {
+	systemStats   *SystemStats
+	processCache  []Process
+	diskCache     DiskStats
+	lastUpdate    time.Time
+	lastDiskUpdate time.Time
+	lastProcessUpdate time.Time
+	cacheDuration time.Duration
+	diskCacheDuration time.Duration
+	processCacheDuration time.Duration
+}
+
+// NewMonitor 创建新的监控器实例
+func NewMonitor() *Monitor {
+	return &Monitor{
+		cache: &dataCache{
+			cacheDuration: 5 * time.Second,        // 基础数据缓存5秒
+			diskCacheDuration: 30 * time.Second,   // 磁盘数据缓存30秒
+			processCacheDuration: 15 * time.Second, // 进程数据缓存15秒
+		},
+	}
+}
 
 // SystemStats 系统统计信息
 type SystemStats struct {
@@ -95,42 +126,69 @@ type Service struct {
 	Description string `json:"description"`
 }
 
-// NewMonitor 创建系统监控器
-func NewMonitor() *Monitor {
-	return &Monitor{}
-}
+// 注意：此处有重复的NewMonitor函数声明，已注释掉
+// func NewMonitor() *Monitor {
+// 	return &Monitor{}
+// }
 
-// GetSystemStats 获取系统统计信息
+// GetSystemStats 获取系统统计信息（带缓存）
 func (m *Monitor) GetSystemStats() (*SystemStats, error) {
+	// 先检查全局缓存
+	if cached, found := cache.GlobalCache.Get("system_stats"); found {
+		if stats, ok := cached.(*SystemStats); ok {
+			// 更新时间戳
+			statsCopy := *stats
+			statsCopy.Timestamp = time.Now()
+			return &statsCopy, nil
+		}
+	}
+
+	// 缓存未命中，获取新数据
+	m.cacheMutex.Lock()
+	defer m.cacheMutex.Unlock()
+
+	// 双重检查全局缓存
+	if cached, found := cache.GlobalCache.Get("system_stats"); found {
+		if stats, ok := cached.(*SystemStats); ok {
+			statsCopy := *stats
+			statsCopy.Timestamp = time.Now()
+			return &statsCopy, nil
+		}
+	}
+
 	stats := &SystemStats{
 		Timestamp: time.Now(),
 	}
 
-	// 获取主机名
-	hostname, _ := os.Hostname()
-	stats.Hostname = hostname
+	// 获取主机名（缓存静态信息）
+	if m.cache.systemStats == nil {
+		hostname, _ := os.Hostname()
+		stats.Hostname = hostname
+		stats.OS = m.getOSInfo()
+		stats.Kernel = m.getKernelVersion()
+	} else {
+		// 复用静态信息
+		stats.Hostname = m.cache.systemStats.Hostname
+		stats.OS = m.cache.systemStats.OS
+		stats.Kernel = m.cache.systemStats.Kernel
+	}
 
-	// 获取操作系统信息
-	stats.OS = m.getOSInfo()
-	stats.Kernel = m.getKernelVersion()
-
-	// 获取CPU信息
+	// 获取动态信息
 	stats.CPU = m.getCPUStats()
-
-	// 获取内存信息
 	stats.Memory = m.getMemoryStats()
-
-	// 获取磁盘信息
-	stats.Disk = m.getDiskStats()
-
-	// 获取网络信息
 	stats.Network = m.getNetworkStats()
-
-	// 获取负载信息
 	stats.LoadAvg = m.getLoadAvg()
-
-	// 获取运行时间
 	stats.Uptime = m.getUptime()
+
+	// 获取磁盘信息（使用独立缓存）
+	stats.Disk = m.getDiskStatsWithCache()
+
+	// 更新本地缓存
+	m.cache.systemStats = stats
+	m.cache.lastUpdate = time.Now()
+
+	// 更新全局缓存
+	cache.GlobalCache.Set("system_stats", stats, cache.CacheTTL["system_stats"])
 
 	return stats, nil
 }
@@ -236,11 +294,29 @@ func (m *Monitor) getMemoryStats() MemoryStats {
 	return stats
 }
 
+// getDiskStatsWithCache 获取磁盘统计（带缓存）
+func (m *Monitor) getDiskStatsWithCache() DiskStats {
+	// 检查磁盘缓存
+	if time.Since(m.cache.lastDiskUpdate) < m.cache.diskCacheDuration {
+		return m.cache.diskCache
+	}
+
+	// 缓存过期，重新获取
+	stats := m.getDiskStats()
+	m.cache.diskCache = stats
+	m.cache.lastDiskUpdate = time.Now()
+	return stats
+}
+
 // getDiskStats 获取磁盘统计
 func (m *Monitor) getDiskStats() DiskStats {
 	stats := DiskStats{}
 
-	cmd := exec.Command("df", "-B1", "/")
+	// 添加超时机制，减少超时时间
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "df", "-B1", "/")
 	output, err := cmd.Output()
 	if err != nil {
 		return stats
@@ -456,9 +532,49 @@ func (m *Monitor) formatBytes(bytes uint64) string {
 	return fmt.Sprintf("%.1f %s", size, sizes[i])
 }
 
-// GetProcessList 获取进程列表
+// GetProcessList 获取进程列表（带缓存和限制）
 func (m *Monitor) GetProcessList() ([]Process, error) {
-	cmd := exec.Command("ps", "aux")
+	m.cacheMutex.RLock()
+	// 检查进程缓存
+	if len(m.cache.processCache) > 0 && time.Since(m.cache.lastProcessUpdate) < m.cache.processCacheDuration {
+		processes := make([]Process, len(m.cache.processCache))
+		copy(processes, m.cache.processCache)
+		m.cacheMutex.RUnlock()
+		return processes, nil
+	}
+	m.cacheMutex.RUnlock()
+
+	// 缓存过期，重新获取
+	m.cacheMutex.Lock()
+	defer m.cacheMutex.Unlock()
+
+	// 双重检查
+	if len(m.cache.processCache) > 0 && time.Since(m.cache.lastProcessUpdate) < m.cache.processCacheDuration {
+		processes := make([]Process, len(m.cache.processCache))
+		copy(processes, m.cache.processCache)
+		return processes, nil
+	}
+
+	processes, err := m.getProcessListInternal()
+	if err != nil {
+		return nil, err
+	}
+
+	// 更新缓存
+	m.cache.processCache = processes
+	m.cache.lastProcessUpdate = time.Now()
+
+	return processes, nil
+}
+
+// getProcessListInternal 内部获取进程列表
+func (m *Monitor) getProcessListInternal() ([]Process, error) {
+	// 减少超时时间，优化性能
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// 使用更高效的ps命令，只获取需要的字段，限制输出行数
+	cmd := exec.CommandContext(ctx, "ps", "axo", "pid,user,%cpu,%mem,stat,comm", "--sort=-%cpu", "--no-headers")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, err
@@ -467,38 +583,34 @@ func (m *Monitor) GetProcessList() ([]Process, error) {
 	var processes []Process
 	lines := strings.Split(string(output), "\n")
 
-	// 跳过标题行
-	for i := 1; i < len(lines); i++ {
-		line := strings.TrimSpace(lines[i])
-		if line == "" {
-			continue
+	// 限制进程数量，只取前50个进程以提高性能
+	maxProcesses := 50
+	count := 0
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || count >= maxProcesses {
+			break
 		}
 
 		fields := strings.Fields(line)
-		if len(fields) >= 11 {
-			pid, _ := strconv.Atoi(fields[1])
+		if len(fields) >= 6 {
+			pid, _ := strconv.Atoi(fields[0])
 			cpu, _ := strconv.ParseFloat(fields[2], 64)
 			memory, _ := strconv.ParseFloat(fields[3], 64)
 
 			process := Process{
 				PID:     pid,
-				User:    fields[0],
+				User:    fields[1],
 				CPU:     cpu,
 				Memory:  memory,
-				Status:  fields[7],
-				Command: strings.Join(fields[10:], " "),
-			}
-
-			// 提取进程名
-			if len(fields[10]) > 0 {
-				process.Name = fields[10]
-				if strings.Contains(process.Name, "/") {
-					parts := strings.Split(process.Name, "/")
-					process.Name = parts[len(parts)-1]
-				}
+				Status:  fields[4],
+				Name:    fields[5],
+				Command: fields[5], // 简化命令显示
 			}
 
 			processes = append(processes, process)
+			count++
 		}
 	}
 

@@ -2,12 +2,15 @@ package environment
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
 	"time"
+
+	"server-panel/internal/cache"
 )
 
 // Manager 环境管理器
@@ -18,6 +21,9 @@ type Manager struct {
 	cacheTTL        time.Duration
 	currentProgress *InstallProgress
 	progressMutex   sync.RWMutex
+	// 添加Overview缓存
+	overviewCache     *EnvironmentOverview
+	overviewCacheTime time.Time
 }
 
 // Environment 环境信息
@@ -44,7 +50,7 @@ type InstallProgress struct {
 func NewManager() *Manager {
 	return &Manager{
 		cache:    make(map[string]Environment),
-		cacheTTL: 30 * time.Second, // 缓存30秒
+		cacheTTL: 5 * time.Minute, // 增加缓存时间到5分钟，减少频繁的命令执行
 	}
 }
 
@@ -1489,10 +1495,33 @@ func (m *Manager) InvalidateCache() {
 	defer m.mutex.Unlock()
 	m.cache = make(map[string]Environment)
 	m.cacheTime = time.Time{}
+	// 同时清除Overview缓存
+	m.overviewCache = nil
+	m.overviewCacheTime = time.Time{}
 }
 
 // GetOverview 获取环境概览 - 新的综合接口
 func (m *Manager) GetOverview() (*EnvironmentOverview, error) {
+	// 先检查全局缓存
+	if cached, found := cache.GlobalCache.Get("environment"); found {
+		if overview, ok := cached.(*EnvironmentOverview); ok {
+			// 返回副本
+			overviewCopy := *overview
+			return &overviewCopy, nil
+		}
+	}
+
+	// 缓存未命中，获取新数据
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	// 双重检查全局缓存
+	if cached, found := cache.GlobalCache.Get("environment"); found {
+		if overview, ok := cached.(*EnvironmentOverview); ok {
+			overviewCopy := *overview
+			return &overviewCopy, nil
+		}
+	}
 	services := []Service{
 		{
 			Name:        "nginx",
@@ -1553,6 +1582,13 @@ func (m *Manager) GetOverview() (*EnvironmentOverview, error) {
 		overview.PHPExtensions = m.getPHPExtensions()
 	}
 
+	// 更新本地缓存
+	m.overviewCache = overview
+	m.overviewCacheTime = time.Now()
+
+	// 更新全局缓存
+	cache.GlobalCache.Set("environment", overview, cache.CacheTTL["environment"])
+
 	return overview, nil
 }
 
@@ -1573,6 +1609,11 @@ func (m *Manager) checkServiceStatus(name string) (installed bool, version strin
 		return false, "", false
 	}
 
+	// 添加超时机制，避免命令执行时间过长
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd = exec.CommandContext(ctx, cmd.Path, cmd.Args[1:]...)
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return false, "", false
@@ -1590,7 +1631,11 @@ func (m *Manager) isServiceRunning(name string) bool {
 		serviceName = "mysql" // MariaDB service is usually named mysql
 	}
 
-	cmd := exec.Command("systemctl", "is-active", serviceName)
+	// 添加超时机制
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "systemctl", "is-active", serviceName)
 	output, err := cmd.Output()
 	if err != nil {
 		return false

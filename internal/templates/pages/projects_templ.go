@@ -134,7 +134,7 @@ func Projects(title, username, currentLang string, overview *projects.ProjectOve
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</button></div></div></div></div><!-- Create Project Modal --><div x-show=\"showCreateModal\" class=\"fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50\"><div class=\"relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800\"><div class=\"mt-3\"><h3 class=\"text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</button></div></div></div></div><!-- Create Project Modal --><div x-show=\"showCreateModal\" x-cloak class=\"fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50\" style=\"display: none;\"><div class=\"relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800\"><div class=\"mt-3\"><h3 class=\"text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

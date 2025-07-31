@@ -107,16 +107,20 @@ templ Base(title string, username string, currentLang string) {
 				}));
 			});
 
-			// HTMX配置
-			htmx.config.globalViewTransitions = true;
+			// HTMX配置 - 优化版本
+			htmx.config.globalViewTransitions = false; // 禁用视图转换以提高性能
 			htmx.config.defaultSwapStyle = 'innerHTML';
-			htmx.config.defaultSwapDelay = 100;
+			htmx.config.defaultSwapDelay = 50; // 减少延迟
+			htmx.config.timeout = 10000; // 10秒超时
+			htmx.config.historyCacheSize = 5; // 限制历史缓存大小
 
-			// SSE相关变量
+			// SSE相关变量 - 优化版本
 			let eventSource = null;
 			let cpuData = [];
 			let reconnectAttempts = 0;
-			const maxReconnectAttempts = 5;
+			const maxReconnectAttempts = 3; // 减少重连次数
+			let lastUpdateTime = 0;
+			const updateThrottle = 1000; // 限制更新频率为1秒
 
 			// 更新连接状态
 			function updateConnectionStatus(status, text) {
@@ -134,15 +138,25 @@ templ Base(title string, username string, currentLang string) {
 				}
 			}
 
-			// 更新系统统计
+			// 更新系统统计 - 优化版本，添加节流机制
 			function updateSystemStats(stats) {
+				const now = Date.now();
+				if (now - lastUpdateTime < updateThrottle) {
+					return; // 跳过过于频繁的更新
+				}
+				lastUpdateTime = now;
+
 				console.log('更新系统统计，数据结构:', stats);
-				updateCPUCard(stats.cpu);
-				updateMemoryCard(stats.memory);
-				updateDiskCard(stats.disk);
-				updateNetworkCard(stats.network);
-				updateCPUChart(stats.cpu.usage);
-				updateMemoryDetails(stats.memory);
+
+				// 批量更新DOM，减少重排重绘
+				requestAnimationFrame(() => {
+					updateCPUCard(stats.cpu);
+					updateMemoryCard(stats.memory);
+					updateDiskCard(stats.disk);
+					updateNetworkCard(stats.network);
+					updateCPUChart(stats.cpu ? stats.cpu.usage : 0);
+					updateMemoryDetails(stats.memory);
+				});
 			}
 
 			// 更新CPU卡片
@@ -372,6 +386,12 @@ templ Base(title string, username string, currentLang string) {
 					} catch (error) {
 						console.error('❌ 解析统计数据失败:', error, '原始数据:', event.data);
 					}
+				});
+
+				// 心跳包事件 - 保持连接活跃
+				eventSource.addEventListener('heartbeat', function(event) {
+					console.log('💓 收到心跳包:', event.data);
+					// 心跳包不需要更新UI，只是保持连接
 				});
 
 				// 错误事件

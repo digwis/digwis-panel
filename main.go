@@ -32,7 +32,7 @@ func main() {
 	srv := server.New(config)
 
 	// 启动服务器
-	log.Printf("🖥️  DigWis Panel 启动中...")
+	log.Printf("🖥️  DigWis Panel 启动中... (优化版本)")
 	if err := srv.StartWithGracefulShutdown(); err != nil {
 		log.Fatalf("服务器启动失败: %v", err)
 	}

@@ -1,33 +1,13 @@
 {
-    "latest": "v0.3.1",
+    "latest": "v0.3.2",
     "versions": {
-        "v0.3.1": {
-            "build_time": "2025-07-29T22:36:00Z",
+        "v0.3.2": {
+            "build_time": "2025-07-31T07:49:45Z",
             "platforms": [
                 "linux/amd64"
             ],
             "stable": true,
-            "changelog": "修复CGO支持和静态资源嵌入问题"
-        },
-        "v0.3.0": {
-            "build_time": "2025-07-29T03:24:00Z",
-            "platforms": [
-                "linux/amd64",
-                "linux/arm64",
-                "linux/arm"
-            ],
-            "stable": true,
-            "changelog": "新增嵌入式静态文件支持，优化部署流程，添加快速升级功能"
-        },
-        "v0.2.0": {
-            "build_time": "2025-07-28T07:47:26Z",
-            "platforms": [
-                "linux/amd64",
-                "linux/arm64",
-                "linux/arm"
-            ],
-            "stable": true,
-            "changelog": "Initial release with embedded static files"
+            "changelog": "版本更新到v0.3.2"
         }
     },
     "download_base": "https://github.com/digwis/digwis-panel/releases/download",

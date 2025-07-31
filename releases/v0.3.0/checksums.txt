@@ -1,3 +1,0 @@
-659063bd2d6eeff4794c01bef5e82ce444deec7aa831415bbcaf1f2eba193cac  digwis-panel-v0.3.0-linux-amd64.tar.gz
-b3abf2c5185c4f7da72414f439d1fedc1cafc99781327875da966b25b2be8dba  digwis-panel-v0.3.0-linux-arm64.tar.gz
-410442efd54c708f6402c65c4a79e45aaa0e2b1ff244f6c288602ed135cd83df  digwis-panel-v0.3.0-linux-arm.tar.gz
